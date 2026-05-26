@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profitability Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    .back-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #3b5bdb;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 20px;
+      padding: 7px 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      transition: border-color 0.15s;
+    }
+    .back-btn:hover { border-color: #3b5bdb; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 70px 16px 60px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 600px;
+      padding: 40px 40px 36px;
+    }
+
+    /* ── Header ── */
+    .header { margin-bottom: 28px; }
+    .header h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #111;
+      margin-bottom: 6px;
+    }
+    .formula-badge {
+      display: inline-block;
+      background: #f0f4ff;
+      color: #3b5bdb;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── Section titles ── */
+    .section-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      padding-bottom: 10px;
+      border-bottom: 1.5px solid #f0f0f0;
+      margin-bottom: 16px;
+      margin-top: 24px;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .section-title .sub {
+      font-weight: 500;
+      color: #bbb;
+      font-size: 0.72rem;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    /* ── Field ── */
+    .field { margin-bottom: 14px; }
+
+    .field-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 7px;
+    }
+    .field-label-row label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .avg-ref {
+      font-size: 0.73rem;
+      font-weight: 600;
+      color: #999;
+      background: #f5f5f5;
+      padding: 2px 8px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+
+    /* ── Input wrap ── */
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-wrap .sym {
+      position: absolute;
+      left: 13px;
+      color: #888;
+      font-size: 0.92rem;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .input-wrap .suf {
+      position: absolute;
+      right: 13px;
+      color: #888;
+      font-size: 0.88rem;
+      pointer-events: none;
+    }
+    .input-wrap input {
+      width: 100%;
+      padding: 11px 13px 11px 28px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 0.93rem;
+      color: #111;
+      background: #fafafa;
+      outline: none;
+      transition: border-color .15s, background .15s;
+      -moz-appearance: textfield;
+    }
+    .input-wrap input::-webkit-outer-spin-button,
+    .input-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .input-wrap input.no-sym { padding-left: 13px; }
+    .input-wrap input.has-suf { padding-right: 32px; }
+    .input-wrap input:focus { border-color: #3b5bdb; background: #fff; }
+    .input-wrap input.error { border-color: #e03131; }
+
+    /* ── Variable expense row: % input + computed $ ── */
+    .pct-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .pct-row .input-wrap { flex: 1; }
+    .computed-dollar {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #3b5bdb;
+      white-space: nowrap;
+      min-width: 90px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      width: 100%;
+      padding: 13px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      letter-spacing: 0.02em;
+    }
+    .btn-primary { background: #3b5bdb; color: #fff; margin-top: 8px; }
+    .btn-primary:hover { background: #2f4cbf; }
+    .btn-primary:active { transform: scale(.99); }
+    .btn-reset {
+      margin-top: 10px;
+      background: transparent;
+      color: #888;
+      border: 1.5px solid #e0e0e0;
+    }
+    .btn-reset:hover { border-color: #aaa; color: #444; }
+
+    /* ── Results ── */
+    .results {
+      margin-top: 28px;
+      border-top: 1.5px solid #f0f0f0;
+      padding-top: 24px;
+      display: none;
+    }
+    .results.visible { display: block; }
+
+    .results-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 16px;
+    }
+
+    /* ── Net Income hero ── */
+    .ni-hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .ni-tile {
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: #f8f9fa;
+      border: 1.5px solid #eee;
+    }
+    .ni-tile.primary {
+      background: #3b5bdb;
+      border-color: #3b5bdb;
+    }
+    .ni-tile .tile-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #888;
+      margin-bottom: 5px;
+    }
+    .ni-tile.primary .tile-label { color: rgba(255,255,255,0.75); }
+    .ni-tile .tile-value {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #111;
+      font-variant-numeric: tabular-nums;
+    }
+    .ni-tile.primary .tile-value { color: #fff; }
+    .tile-value.pos { color: #2f9e44; }
+    .tile-value.neg { color: #e03131; }
+
+    /* ── Output table ── */
+    .table-wrap {
+      border-radius: 10px;
+      border: 1px solid #e0e0e0;
+      overflow: hidden;
+    }
+    .out-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+    .out-table thead th {
+      background: #3b5bdb;
+      color: #fff;
+      padding: 9px 12px;
+      text-align: right;
+      font-weight: 700;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    .out-table thead th:first-child { text-align: left; }
+    .out-table tbody tr:nth-child(even) { background: #f9f9f9; }
+    .out-table tbody tr:hover { background: #f0f4ff; }
+    .out-table tbody td {
+      padding: 9px 12px;
+      text-align: right;
+      color: #444;
+      border-bottom: 1px solid #f5f5f5;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .out-table tbody td:first-child { text-align: left; }
+    .out-table tbody tr:last-child td { border-bottom: none; }
+
+    /* Subtotal rows */
+    .row-subtotal td {
+      font-weight: 700 !important;
+      color: #111 !important;
+      background: #f0f4ff !important;
+      border-top: 1.5px solid #dce3ff !important;
+      border-bottom: 1.5px solid #dce3ff !important;
+    }
+    .row-net td {
+      font-weight: 800 !important;
+      color: #111 !important;
+      border-top: 2px solid #3b5bdb !important;
+    }
+    .row-net td.pos { color: #2f9e44 !important; }
+    .row-net td.neg { color: #e03131 !important; }
+
+    .indent { padding-left: 22px !important; color: #666 !important; }
+
+    /* ── Breakeven card ── */
+    .be-card {
+      margin-top: 20px;
+      border-radius: 12px;
+      padding: 18px 20px;
+      border: 1.5px solid #e0e0e0;
+    }
+    .be-card.above { background: #ebfbee; border-color: #b2f2bb; }
+    .be-card.below { background: #fff5f5; border-color: #ffc9c9; }
+
+    .be-above-msg {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #2f9e44;
+      text-align: center;
+      padding: 2px 0;
+    }
+    .be-rows { display: flex; flex-direction: column; }
+    .be-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      font-size: 0.88rem;
+    }
+    .be-row:last-child { border-bottom: none; }
+    .be-row .be-lbl { color: #666; }
+    .be-row .be-val { font-weight: 600; color: #111; font-variant-numeric: tabular-nums; }
+
+    /* ── Three paths ── */
+    .be-paths-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #999;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .be-path-stack { display: flex; flex-direction: column; }
+    .be-path {
+      background: #fff;
+      border-radius: 10px;
+      border: 1.5px solid #e8e8e8;
+      padding: 13px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .be-path-lbl {
+      font-size: 0.73rem;
+      font-weight: 700;
+      color: #777;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+    .be-path-right { text-align: right; }
+    .be-path-value {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #3b5bdb;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.2;
+    }
+    .be-path-sub {
+      font-size: 0.74rem;
+      color: #aaa;
+      margin-top: 2px;
+      line-height: 1.55;
+    }
+    .be-or-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 2px;
+    }
+    .be-or-line { flex: 1; height: 1px; background: #e8e8e8; }
+    .be-or-text { font-size: 0.7rem; font-weight: 800; color: #ccc; letter-spacing: 0.05em; }
+
+    /* ── Food + Labor sum ── */
+    .fl-sum {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f0f4ff;
+      border-radius: 8px;
+      padding: 8px 13px;
+      margin-bottom: 14px;
+      font-size: 0.82rem;
+    }
+    .fl-sum-label { color: #555; font-weight: 500; }
+    .fl-sum-value { color: #3b5bdb; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    @media (max-width: 520px) {
+      .card { padding: 28px 20px 24px; }
+      .ni-hero { grid-template-columns: 1fr; }
+      .ni-tile.primary { order: -1; }
+    }
+  </style>
+</head>
+<body>
+<a href="../index.html" class="back-btn">&#8592; Home</a>
+
+<div class="card">
+  <div class="header">
+    <h1>Profitability Calculator</h1>
+    <span class="formula-badge">P&amp;L &middot; 4W EBITDA &middot; Net Income &middot; Daily</span>
+  </div>
+
+  <!-- ── Sales ── -->
+  <div class="section-title">Sales</div>
+
+  <div class="field">
+    <div class="field-label-row">
+      <label>Sales (Period)</label>
+      <span class="avg-ref">Avg P2&#8211;P5: $2,239,480</span>
+    </div>
+    <div class="input-wrap">
+      <span class="sym">$</span>
+      <input type="text" id="sales" placeholder="2,300,000" inputmode="numeric" autocomplete="off" />
+    </div>
+  </div>
+
+  <!-- ── Variable Expenses ── -->
+  <div class="section-title">
+    Variable Expenses
+    <span class="sub">% of Sales &rarr; $ auto-calculated</span>
+  </div>
+
+  <div class="field">
+    <div class="field-label-row">
+      <label>COGS</label>
+      <span class="avg-ref">Avg P2-P5: 31.26%</span>
+    </div>
+    <div class="pct-row">
+      <div class="input-wrap">
+        <input type="text" id="cogs_pct" placeholder="30.5" inputmode="decimal" class="no-sym has-suf" autocomplete="off" />
+        <span class="suf">%</span>
+      </div>
+      <div class="computed-dollar" id="cogs_dollar">&#8212;</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="field-label-row">
+      <label>Labor</label>
+      <span class="avg-ref">Avg P2-P5: 26.49%</span>
+    </div>
+    <div class="pct-row">
+      <div class="input-wrap">
+        <input type="text" id="labor_pct" placeholder="25.5" inputmode="decimal" class="no-sym has-suf" autocomplete="off" />
+        <span class="suf">%</span>
+      </div>
+      <div class="computed-dollar" id="labor_dollar">&#8212;</div>
+    </div>
+  </div>
+
+  <!-- Food + Labor combined sum -->
+  <div class="fl-sum" id="fl-sum" style="display:none;">
+    <span class="fl-sum-label">Food Cost + Labor</span>
+    <span class="fl-sum-value" id="fl-sum-value">&#8212;</span>
+  </div>
+
+  <div class="field">
+    <div class="field-label-row">
+      <label>Royalty</label>
+      <span class="avg-ref">Avg P2-P5: 10%</span>
+    </div>
+    <div class="pct-row">
+      <div class="input-wrap">
+        <input type="text" id="royalty_pct" placeholder="10.0" inputmode="decimal" class="no-sym has-suf" autocomplete="off" />
+        <span class="suf">%</span>
+      </div>
+      <div class="computed-dollar" id="royalty_dollar">&#8212;</div>
+    </div>
+  </div>
+
+  <!-- ── Fixed Expenses ── -->
+  <div class="section-title">
+    Fixed Expenses
+    <span class="sub">Enter $ amount</span>
+  </div>
+
+  <div class="field">
+    <div class="field-label-row">
+      <label>G&amp;A</label>
+      <span class="avg-ref">Avg P2-P5: $243,326</span>
+    </div>
+    <div class="pct-row">
+      <div class="input-wrap">
+        <span class="sym">$</span>
+        <input type="text" id="gna" placeholder="237,000" inputmode="numeric" autocomplete="off" />
+      </div>
+      <div class="computed-dollar" id="gna_pct">&#8212;</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="field-label-row">
+      <label>Utilities</label>
+      <span class="avg-ref">Avg P2-P5: $94,592</span>
+    </div>
+    <div class="pct-row">
+      <div class="input-wrap">
+        <span class="sym">$</span>
+        <input type="text" id="utilities" placeholder="90,000" inputmode="numeric" autocomplete="off" />
+      </div>
+      <div class="computed-dollar" id="utilities_pct">&#8212;</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="field-label-row">
+      <label>R&amp;M</label>
+      <span class="avg-ref">Avg P2-P5: $30,844</span>
+    </div>
+    <div class="pct-row">
+      <div class="input-wrap">
+        <span class="sym">$</span>
+        <input type="text" id="rnm" placeholder="30,000" inputmode="numeric" autocomplete="off" />
+      </div>
+      <div class="computed-dollar" id="rnm_pct">&#8212;</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="field-label-row">
+      <label>Rent</label>
+      <span class="avg-ref">P5 Ref: $198,851</span>
+    </div>
+    <div class="pct-row">
+      <div class="input-wrap">
+        <span class="sym">$</span>
+        <input type="text" id="rent" placeholder="199,000" inputmode="numeric" autocomplete="off" />
+      </div>
+      <div class="computed-dollar" id="rent_pct">&#8212;</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="field-label-row">
+      <label>CG&amp;A</label>
+      <span class="avg-ref">Avg P2-P5: $77,721</span>
+    </div>
+    <div class="pct-row">
+      <div class="input-wrap">
+        <span class="sym">$</span>
+        <input type="text" id="cga" placeholder="79,000" inputmode="numeric" autocomplete="off" />
+      </div>
+      <div class="computed-dollar" id="cga_pct">&#8212;</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="field-label-row">
+      <label>P&amp;I</label>
+      <span class="avg-ref">Avg P2-P5: $189,711</span>
+    </div>
+    <div class="pct-row">
+      <div class="input-wrap">
+        <span class="sym">$</span>
+        <input type="text" id="pni" placeholder="140,000" inputmode="numeric" autocomplete="off" />
+      </div>
+      <div class="computed-dollar" id="pni_pct">&#8212;</div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="calculate()">Calculate P&amp;L</button>
+  <button class="btn btn-reset" onclick="resetForm()">Clear &amp; Recalculate</button>
+
+  <!-- ── Results ── -->
+  <div class="results" id="results">
+    <div class="results-label">Results &mdash; Period (28 Days)</div>
+
+    <!-- Hero tiles -->
+    <div class="ni-hero">
+      <div class="ni-tile">
+        <div class="tile-label">4W EBITDA</div>
+        <div class="tile-value" id="hero-ebitda4w">&#8212;</div>
+      </div>
+      <div class="ni-tile">
+        <div class="tile-label">Company EBITDA</div>
+        <div class="tile-value" id="hero-ebitda-co">&#8212;</div>
+      </div>
+      <div class="ni-tile primary">
+        <div class="tile-label">Net Income</div>
+        <div class="tile-value" id="hero-ni">&#8212;</div>
+      </div>
+    </div>
+
+    <!-- P&L table -->
+    <div class="table-wrap">
+      <table class="out-table">
+        <thead>
+          <tr>
+            <th>Line Item</th>
+            <th>$ Period</th>
+            <th>% Period</th>
+          </tr>
+        </thead>
+        <tbody id="out-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Breakeven card -->
+    <div class="be-card" id="be-card">
+
+      <!-- Above breakeven -->
+      <div id="be-above-section" style="display:none;">
+        <div class="be-above-msg" id="be-verdict-above"></div>
+        <div class="be-rows" style="margin-top:14px;">
+          <div class="be-row">
+            <span class="be-lbl">Current Sales</span>
+            <span class="be-val" id="be-current-above"></span>
+          </div>
+          <div class="be-row">
+            <span class="be-lbl">Breakeven Sales</span>
+            <span class="be-val" id="be-sales-above"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Below breakeven — 3 paths -->
+      <div id="be-below-section" style="display:none;">
+        <div class="be-paths-label">To break even, either:</div>
+        <div class="be-path-stack">
+
+          <div class="be-path">
+            <div class="be-path-lbl">Grow Sales To</div>
+            <div class="be-path-right">
+              <div class="be-path-value" id="be-p1-val"></div>
+              <div class="be-path-sub" id="be-p1-sub"></div>
+            </div>
+          </div>
+
+          <div class="be-or-row"><div class="be-or-line"></div><div class="be-or-text">OR</div><div class="be-or-line"></div></div>
+
+          <div class="be-path">
+            <div class="be-path-lbl">Cut Food + Labor To</div>
+            <div class="be-path-right">
+              <div class="be-path-value" id="be-p2-val"></div>
+              <div class="be-path-sub" id="be-p2-sub"></div>
+            </div>
+          </div>
+
+          <div class="be-or-row"><div class="be-or-line"></div><div class="be-or-text">OR</div><div class="be-or-line"></div></div>
+
+          <div class="be-path">
+            <div class="be-path-lbl">Cut Fixed Costs To</div>
+            <div class="be-path-right">
+              <div class="be-path-value" id="be-p3-val"></div>
+              <div class="be-path-sub" id="be-p3-sub"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const DAYS = 28;
+
+  function parseMoney(v) {
+    const n = parseFloat((v || '').replace(/,/g, '').replace(/\$/g, '').trim());
+    return isNaN(n) ? 0 : n;
+  }
+  function parsePct(v) {
+    const n = parseFloat((v || '').replace(/%/g, '').trim());
+    return isNaN(n) ? 0 : n;
+  }
+
+  function fmtD(n) {
+    const abs = Math.round(Math.abs(n));
+    const sign = n < 0 ? '-' : '';
+    return sign + '$' + abs.toLocaleString('en-US');
+  }
+  function fmtPct(n) { return n.toFixed(1) + '%'; }
+
+  function formatCommaInput(input) {
+    const raw = input.value.replace(/,/g, '');
+    if (raw === '' || raw === '-') return;
+    const n = parseFloat(raw);
+    if (!isNaN(n)) {
+      const parts = raw.split('.');
+      parts[0] = Math.floor(Math.abs(parseFloat(parts[0]))).toLocaleString('en-US');
+      input.value = parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0];
+    }
+  }
+
+  function getLiveValues() {
+    const sales      = parseMoney(document.getElementById('sales').value);
+    const cogsPct    = parsePct(document.getElementById('cogs_pct').value);
+    const laborPct   = parsePct(document.getElementById('labor_pct').value);
+    const royaltyPct = parsePct(document.getElementById('royalty_pct').value);
+    return { sales, cogsPct, laborPct, royaltyPct };
+  }
+
+  function updateLive() {
+    const { sales, cogsPct, laborPct, royaltyPct } = getLiveValues();
+
+    // Variable expenses: % → $
+    document.getElementById('cogs_dollar').textContent    = (sales > 0 && cogsPct    > 0) ? fmtD(sales * cogsPct    / 100) : '—';
+    document.getElementById('labor_dollar').textContent   = (sales > 0 && laborPct   > 0) ? fmtD(sales * laborPct   / 100) : '—';
+    document.getElementById('royalty_dollar').textContent = (sales > 0 && royaltyPct > 0) ? fmtD(sales * royaltyPct / 100) : '—';
+
+    // Food + Labor combined sum
+    const flSumEl = document.getElementById('fl-sum');
+    if (cogsPct > 0 || laborPct > 0) {
+      flSumEl.style.display = 'flex';
+      document.getElementById('fl-sum-value').textContent = (cogsPct + laborPct).toFixed(1) + '%';
+    } else {
+      flSumEl.style.display = 'none';
+    }
+
+    // Fixed expenses: $ → %
+    const fixedIds = ['gna', 'utilities', 'rnm', 'rent', 'cga', 'pni'];
+    fixedIds.forEach(id => {
+      const val = parseMoney(document.getElementById(id).value);
+      const el  = document.getElementById(id + '_pct');
+      el.textContent = (sales > 0 && val > 0) ? (val / sales * 100).toFixed(2) + '%' : '—';
+    });
+  }
+
+  function calculate() {
+    const sales      = parseMoney(document.getElementById('sales').value);
+    const cogsPct    = parsePct(document.getElementById('cogs_pct').value);
+    const laborPct   = parsePct(document.getElementById('labor_pct').value);
+    const royaltyPct = parsePct(document.getElementById('royalty_pct').value);
+    const gna        = parseMoney(document.getElementById('gna').value);
+    const utilities  = parseMoney(document.getElementById('utilities').value);
+    const rnm        = parseMoney(document.getElementById('rnm').value);
+    const rent       = parseMoney(document.getElementById('rent').value);
+    const cga        = parseMoney(document.getElementById('cga').value);
+    const pni        = parseMoney(document.getElementById('pni').value);
+
+    if (!sales || sales <= 0) {
+      const el = document.getElementById('sales');
+      el.classList.add('error');
+      el.focus();
+      setTimeout(() => el.classList.remove('error'), 1400);
+      return;
+    }
+
+    const cogs    = sales * cogsPct    / 100;
+    const labor   = sales * laborPct   / 100;
+    const royalty = sales * royaltyPct / 100;
+
+    const ebitda4w   = sales - cogs - labor - royalty - gna - utilities - rnm - rent;
+    const ebitdaCo   = ebitda4w - cga;
+    const netIncome  = ebitdaCo - pni;
+
+    // Hero tiles
+    const setHero = (id, val) => {
+      const el = document.getElementById(id);
+      el.textContent = fmtD(val);
+      el.className = 'tile-value' + (val < 0 ? ' neg' : val > 0 ? ' pos' : '');
+    };
+    setHero('hero-ebitda4w',  ebitda4w);
+    setHero('hero-ebitda-co', ebitdaCo);
+    document.getElementById('hero-ni').textContent = fmtD(netIncome);
+    document.getElementById('hero-ni').className = 'tile-value';
+
+    // Build table rows
+    const rows = [
+      { label: 'Sales',           val: sales,     type: 'normal' },
+      { label: 'COGS',            val: cogs,       type: 'expense' },
+      { label: 'Labor',           val: labor,      type: 'expense' },
+      { label: 'Royalty',         val: royalty,    type: 'expense' },
+      { label: 'G&amp;A',         val: gna,        type: 'expense' },
+      { label: 'Utilities',       val: utilities,  type: 'expense' },
+      { label: 'R&amp;M',         val: rnm,        type: 'expense' },
+      { label: 'Rent',            val: rent,       type: 'expense' },
+      { label: '4W EBITDA',       val: ebitda4w,   type: 'subtotal' },
+      { label: 'CG&amp;A',        val: cga,        type: 'expense' },
+      { label: 'Company EBITDA',  val: ebitdaCo,   type: 'subtotal' },
+      { label: 'P&amp;I',         val: pni,        type: 'expense' },
+      { label: 'Net Income',      val: netIncome,  type: 'net' },
+    ];
+
+    const tbody = document.getElementById('out-body');
+    tbody.innerHTML = '';
+    rows.forEach(row => {
+      const daily   = row.val / DAYS;
+      const pct     = row.label === 'Sales' ? 100.0 : (sales > 0 ? (row.val / sales) * 100 : 0);
+      const tr      = document.createElement('tr');
+      const isNeg   = row.val < 0;
+
+      if      (row.type === 'net')      tr.className = 'row-net';
+      else if (row.type === 'subtotal') tr.className = 'row-subtotal';
+
+      const indent  = row.type === 'expense' ? ' class="indent"' : '';
+      const netCls  = row.type === 'net' ? (isNeg ? ' class="neg"' : ' class="pos"') : '';
+
+      tr.innerHTML =
+        `<td${indent}>${row.label}</td>` +
+        `<td${netCls}>${fmtD(row.val)}</td>` +
+        `<td${netCls}>${fmtPct(pct)}</td>`;
+
+      tbody.appendChild(tr);
+    });
+
+    // ── Breakeven ──
+    const variableRate  = (cogsPct + laborPct + royaltyPct) / 100;
+    const contribMargin = 1 - variableRate;
+    const totalFixed    = gna + utilities + rnm + rent + cga + pni;
+    const beSales       = contribMargin > 0 ? totalFixed / contribMargin : null;
+    const above         = beSales !== null && sales >= beSales;
+    const gap           = beSales !== null ? Math.abs(sales - beSales) : null;
+
+    document.getElementById('be-card').className = 'be-card ' + (above ? 'above' : 'below');
+    const aboveSection = document.getElementById('be-above-section');
+    const belowSection = document.getElementById('be-below-section');
+
+    if (above) {
+      aboveSection.style.display = 'block';
+      belowSection.style.display = 'none';
+      document.getElementById('be-verdict-above').textContent  = `✓  Sales exceed breakeven by $${Math.round(gap).toLocaleString('en-US')}`;
+      document.getElementById('be-current-above').textContent  = fmtD(sales);
+      document.getElementById('be-sales-above').textContent    = fmtD(beSales);
+    } else {
+      aboveSection.style.display = 'none';
+      belowSection.style.display = 'block';
+
+      // Path 1 — Grow Sales
+      const salesGrowPct = gap / sales * 100;
+      document.getElementById('be-p1-val').textContent = fmtD(beSales);
+      document.getElementById('be-p1-sub').innerHTML   =
+        `currently ${fmtD(sales)}<br>grow by ${salesGrowPct.toFixed(1)}% · grow by ${fmtD(gap)}`;
+
+      // Path 2 — Cut Food + Labor
+      const currentFoodLabor  = cogsPct + laborPct;
+      const newVarRate        = 1 - (totalFixed / sales);
+      const reductionPct      = (variableRate - newVarRate) * 100;
+      const targetFoodLabor   = currentFoodLabor - reductionPct;
+      const flSavings         = reductionPct / 100 * sales;
+      document.getElementById('be-p2-val').textContent = targetFoodLabor.toFixed(1) + '%';
+      document.getElementById('be-p2-sub').innerHTML   =
+        `currently ${currentFoodLabor.toFixed(1)}%<br>reduce by ${reductionPct.toFixed(1)}% · save ${fmtD(flSavings)}`;
+
+      // Path 3 — Cut Fixed Costs
+      const requiredFixed     = sales * contribMargin;
+      const fixedReduction    = totalFixed - requiredFixed;
+      const fixedRedPct       = fixedReduction / totalFixed * 100;
+      document.getElementById('be-p3-val').textContent = fmtD(requiredFixed);
+      document.getElementById('be-p3-sub').innerHTML   =
+        `currently ${fmtD(totalFixed)}<br>reduce by ${fixedRedPct.toFixed(1)}% · save ${fmtD(fixedReduction)}`;
+    }
+
+    document.getElementById('results').classList.add('visible');
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function resetForm() {
+    document.querySelectorAll('input').forEach(el => { el.value = ''; el.classList.remove('error'); });
+    document.getElementById('fl-sum').style.display = 'none';
+    ['cogs_dollar', 'labor_dollar', 'royalty_dollar',
+     'gna_pct', 'utilities_pct', 'rnm_pct', 'rent_pct', 'cga_pct', 'pni_pct'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+    });
+    document.getElementById('results').classList.remove('visible');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('sales').focus();
+  }
+
+  // Wire inputs
+  document.querySelectorAll('input').forEach(input => {
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+    input.addEventListener('input', () => updateLive());
+    input.addEventListener('blur', () => formatCommaInput(input));
+  });
+</script>
+</body>
+</html>
