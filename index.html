@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ace Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .header h1 {
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: #111;
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      font-size: 0.95rem;
+      color: #888;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 640px;
+    }
+
+    .tool-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 32px 28px;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: transform 0.15s, box-shadow 0.15s;
+      border: 1.5px solid transparent;
+    }
+
+    .tool-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      border-color: #3b5bdb;
+    }
+
+    .tool-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #f0f4ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    .tool-card h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #111;
+    }
+
+    .tool-card p {
+      font-size: 0.85rem;
+      color: #777;
+      line-height: 1.5;
+    }
+
+    .tool-badge {
+      display: inline-block;
+      background: #f0f4ff;
+      color: #3b5bdb;
+      font-size: 0.73rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 20px;
+      letter-spacing: 0.01em;
+      align-self: flex-start;
+    }
+
+    .arrow {
+      margin-top: auto;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #3b5bdb;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .footer {
+      margin-top: 48px;
+      font-size: 0.78rem;
+      color: #bbb;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Ace Brands<br>Financial Tools</h1>
+
+  </div>
+
+  <div class="grid">
+
+    <a class="tool-card" href="Lease Adjusted Leverage/lease_adjusted_leverage.html">
+      <div class="tool-icon">&#9783;</div>
+      <h2>Lease-Adjusted Leverage Ratio</h2>
+      <p>Calculate lease-adjusted leverage using funded debt, TTM rent, and EBITDA against the 5.75x threshold.</p>
+      <span class="tool-badge">(Funded Debt + 8× Rent) ÷ EBITDAR</span>
+      <div class="arrow">Open calculator &#8594;</div>
+    </a>
+
+    <a class="tool-card" href="Loan Calculator/loan_calculator.html">
+      <div class="tool-icon">&#36;</div>
+      <h2>Loan Calculator</h2>
+      <p>Compute monthly payments, total interest, and view a full amortization schedule for any loan.</p>
+      <span class="tool-badge">Payment · Amortization · Interest</span>
+      <div class="arrow">Open calculator &#8594;</div>
+    </a>
+
+    <a class="tool-card" href="Profitability Calculator/profitability_calculator.html">
+      <div class="tool-icon">&#128200;</div>
+      <h2>Profitability Calculator</h2>
+      <p>Build a full P&amp;L by entering sales, variable expense percentages, and fixed costs to see 4W EBITDA and net income.</p>
+      <span class="tool-badge">P&amp;L · 4W EBITDA · Net Income · Daily</span>
+      <div class="arrow">Open calculator &#8594;</div>
+    </a>
+
+  </div>
+
+  <div class="footer">Ace Brands &mdash; Internal Tools</div>
+
+</body>
+</html>

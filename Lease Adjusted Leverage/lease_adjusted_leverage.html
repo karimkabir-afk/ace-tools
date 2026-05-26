@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lease-Adjusted Leverage Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    .back-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #3b5bdb;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 20px;
+      padding: 7px 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      transition: border-color 0.15s;
+    }
+    .back-btn:hover { border-color: #3b5bdb; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 520px;
+      padding: 40px 40px 36px;
+    }
+
+    .header { margin-bottom: 28px; }
+
+    .header h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #111;
+      margin-bottom: 6px;
+    }
+
+    .formula-badge {
+      display: inline-block;
+      background: #f0f4ff;
+      color: #3b5bdb;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.01em;
+    }
+
+    .fields { display: flex; flex-direction: column; gap: 18px; margin-bottom: 28px; }
+
+    .field label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-wrap span {
+      position: absolute;
+      left: 14px;
+      color: #888;
+      font-size: 0.95rem;
+      pointer-events: none;
+    }
+
+    .input-wrap input {
+      width: 100%;
+      padding: 11px 14px 11px 28px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      color: #111;
+      outline: none;
+      transition: border-color 0.15s;
+      background: #fafafa;
+    }
+
+    .input-wrap input:focus {
+      border-color: #3b5bdb;
+      background: #fff;
+    }
+
+    .input-wrap input.error { border-color: #e03131; }
+
+    .field-error {
+      font-size: 0.75rem;
+      color: #e03131;
+      margin-top: 4px;
+      min-height: 14px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 13px;
+      background: #3b5bdb;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      letter-spacing: 0.02em;
+    }
+
+    .btn:hover { background: #2f4cbf; }
+    .btn:active { transform: scale(0.99); }
+
+    /* Results */
+    .results {
+      margin-top: 28px;
+      border-top: 1.5px solid #f0f0f0;
+      padding-top: 24px;
+      display: none;
+    }
+
+    .results.visible { display: block; }
+
+    .results h2 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 14px;
+    }
+
+    .result-rows { display: flex; flex-direction: column; gap: 0; }
+
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 9px 0;
+      border-bottom: 1px solid #f5f5f5;
+      font-size: 0.9rem;
+      color: #333;
+    }
+
+    .result-row:last-child { border-bottom: none; }
+
+    .result-row .label { color: #666; }
+
+    .result-row .value {
+      font-weight: 600;
+      color: #111;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .result-row.highlight .label { color: #111; font-weight: 600; }
+    .result-row.highlight .value { font-size: 1.05rem; }
+
+    .result-row.separator { border-top: 1.5px solid #e8e8e8; margin-top: 4px; padding-top: 13px; }
+
+    /* Verdict */
+    .verdict {
+      margin-top: 20px;
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .verdict.pass { background: #ebfbee; }
+    .verdict.fail { background: #fff5f5; }
+
+    .verdict-icon {
+      font-size: 1.6rem;
+      line-height: 1;
+    }
+
+    .verdict-text .status {
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .verdict.pass .verdict-text .status { color: #2f9e44; }
+    .verdict.fail .verdict-text .status { color: #e03131; }
+
+    .verdict-text .sub {
+      font-size: 0.82rem;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    .reset-btn {
+      width: 100%;
+      margin-top: 20px;
+      padding: 10px;
+      background: transparent;
+      color: #888;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .reset-btn:hover { border-color: #aaa; color: #444; }
+  </style>
+</head>
+<body>
+  <a href="../index.html" class="back-btn">&#8592; Home</a>
+  <div class="card">
+    <div class="header">
+      <h1>Lease-Adjusted Leverage</h1>
+      <span class="formula-badge">(Funded Debt + 8× Annual Rent) ÷ TTM EBITDAR</span>
+    </div>
+
+    <div class="fields">
+      <div class="field">
+        <label>Funded Debt</label>
+        <div class="input-wrap">
+          <span>$</span>
+          <input type="text" id="funded_debt" placeholder="0.00" inputmode="decimal" />
+        </div>
+        <div class="field-error" id="err_funded_debt"></div>
+      </div>
+
+      <div class="field">
+        <label>TTM Rent</label>
+        <div class="input-wrap">
+          <span>$</span>
+          <input type="text" id="annual_rent" placeholder="0.00" inputmode="decimal" />
+        </div>
+        <div class="field-error" id="err_annual_rent"></div>
+      </div>
+
+      <div class="field">
+        <label>TTM EBITDA</label>
+        <div class="input-wrap">
+          <span>$</span>
+          <input type="text" id="ebitda" placeholder="0.00" inputmode="decimal" />
+        </div>
+        <div class="field-error" id="err_ebitda"></div>
+      </div>
+    </div>
+
+    <button class="btn" onclick="calculate()">Calculate</button>
+
+    <div class="results" id="results">
+      <h2>Results</h2>
+      <div class="result-rows">
+        <div class="result-row">
+          <span class="label">Funded Debt</span>
+          <span class="value" id="r_funded_debt"></span>
+        </div>
+        <div class="result-row">
+          <span class="label">8× TTM Rent</span>
+          <span class="value" id="r_8x_rent"></span>
+        </div>
+        <div class="result-row">
+          <span class="label">Lease-Adjusted Debt</span>
+          <span class="value" id="r_la_debt"></span>
+        </div>
+        <div class="result-row">
+          <span class="label">TTM EBITDA</span>
+          <span class="value" id="r_ebitda"></span>
+        </div>
+        <div class="result-row">
+          <span class="label">TTM EBITDAR (calculated)</span>
+          <span class="value" id="r_ebitdar"></span>
+        </div>
+        <div class="result-row highlight separator">
+          <span class="label">Lease-Adjusted Leverage</span>
+          <span class="value" id="r_ratio"></span>
+        </div>
+        <div class="result-row">
+          <span class="label">Threshold</span>
+          <span class="value">5.75x</span>
+        </div>
+      </div>
+
+      <div class="verdict" id="verdict">
+        <div class="verdict-icon" id="verdict_icon"></div>
+        <div class="verdict-text">
+          <div class="status" id="verdict_status"></div>
+          <div class="sub" id="verdict_sub"></div>
+        </div>
+      </div>
+
+      <div class="result-rows" style="margin-top: 12px;">
+        <div class="result-row">
+          <span class="label">TTM EBITDA needed for 5.75x</span>
+          <span class="value" id="r_needed"></span>
+        </div>
+        <div class="result-row">
+          <span class="label">or Funded Debt needed for 5.75x</span>
+          <span class="value" id="r_debt_needed"></span>
+        </div>
+      </div>
+
+      <button class="reset-btn" onclick="reset()">Clear & Recalculate</button>
+    </div>
+  </div>
+
+  <script>
+    function parseMoney(val) {
+      return parseFloat(val.replace(/,/g, '').replace(/\$/g, '').trim());
+    }
+
+    function fmt(n) {
+      return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function validate(id, errId, label) {
+      const raw = document.getElementById(id).value;
+      const n = parseMoney(raw);
+      const errEl = document.getElementById(errId);
+      const input = document.getElementById(id);
+
+      if (raw.trim() === '') {
+        errEl.textContent = `${label} is required.`;
+        input.classList.add('error');
+        return null;
+      }
+      if (isNaN(n) || n < 0) {
+        errEl.textContent = `Enter a valid non-negative number.`;
+        input.classList.add('error');
+        return null;
+      }
+      errEl.textContent = '';
+      input.classList.remove('error');
+      return n;
+    }
+
+    function calculate() {
+      const fundedDebt = validate('funded_debt', 'err_funded_debt', 'Funded Debt');
+      const annualRent = validate('annual_rent', 'err_annual_rent', 'TTM Rent');
+      const ebitda     = validate('ebitda',      'err_ebitda',      'TTM EBITDA');
+
+      if (fundedDebt === null || annualRent === null || ebitda === null) return;
+
+      if (ebitda === 0) {
+        document.getElementById('err_ebitda').textContent = 'EBITDA cannot be zero.';
+        document.getElementById('ebitda').classList.add('error');
+        return;
+      }
+
+      const eightXRent      = 8 * annualRent;
+      const laDebt          = fundedDebt + eightXRent;
+      const ebitdar         = ebitda + annualRent;
+      const ratio           = laDebt / ebitdar;
+      const ebitdaNeeded    = (laDebt / 5.75) - annualRent;
+      const debtNeeded      = (5.75 * ebitdar) - eightXRent;
+      const THRESHOLD       = 5.75;
+      const pass            = ratio <= THRESHOLD;
+      const diff            = Math.abs(ratio - THRESHOLD).toFixed(2);
+
+      document.getElementById('r_funded_debt').textContent = fmt(fundedDebt);
+      document.getElementById('r_8x_rent').textContent     = fmt(eightXRent);
+      document.getElementById('r_la_debt').textContent     = fmt(laDebt);
+      document.getElementById('r_ebitda').textContent      = fmt(ebitda);
+      document.getElementById('r_ebitdar').textContent     = fmt(ebitdar);
+      document.getElementById('r_ratio').textContent       = ratio.toFixed(2) + 'x';
+      document.getElementById('r_needed').textContent      = fmt(ebitdaNeeded);
+      document.getElementById('r_debt_needed').textContent = fmt(debtNeeded);
+
+      const verdict  = document.getElementById('verdict');
+      verdict.className = 'verdict ' + (pass ? 'pass' : 'fail');
+      document.getElementById('verdict_icon').textContent   = pass ? '✓' : '✗';
+      document.getElementById('verdict_status').textContent = pass ? 'PASS' : 'FAIL';
+      document.getElementById('verdict_sub').textContent    =
+        (pass ? 'Within threshold by ' : 'Exceeds threshold by ') + diff + 'x';
+
+      document.getElementById('results').classList.add('visible');
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function reset() {
+      ['funded_debt', 'annual_rent', 'ebitda'].forEach(id => {
+        document.getElementById(id).value = '';
+        document.getElementById(id).classList.remove('error');
+      });
+      ['err_funded_debt', 'err_annual_rent', 'err_ebitda'].forEach(id => {
+        document.getElementById(id).textContent = '';
+      });
+      document.getElementById('results').classList.remove('visible');
+      document.getElementById('funded_debt').focus();
+    }
+
+    function formatInput(input) {
+      const raw = input.value.replace(/,/g, '');
+      if (raw === '' || raw === '-') return;
+      const n = parseFloat(raw);
+      if (!isNaN(n)) {
+        const parts = raw.split('.');
+        parts[0] = parseInt(parts[0], 10).toLocaleString('en-US');
+        input.value = parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0];
+      }
+    }
+
+    document.querySelectorAll('input').forEach(input => {
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+      input.addEventListener('input', e => {
+        const pos = input.selectionStart;
+        const beforeLen = input.value.length;
+        formatInput(input);
+        const diff = input.value.length - beforeLen;
+        input.setSelectionRange(pos + diff, pos + diff);
+      });
+      input.addEventListener('blur', () => formatInput(input));
+    });
+  </script>
+</body>
+</html>

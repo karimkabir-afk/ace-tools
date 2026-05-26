@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loan Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    .back-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #3b5bdb;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 20px;
+      padding: 7px 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      transition: border-color 0.15s;
+    }
+    .back-btn:hover { border-color: #3b5bdb; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 70px 16px 60px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 540px;
+      padding: 40px 40px 36px;
+    }
+
+    /* ── Header ── */
+    .header { margin-bottom: 28px; }
+    .header h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #111;
+      margin-bottom: 6px;
+    }
+    .formula-badge {
+      display: inline-block;
+      background: #f0f4ff;
+      color: #3b5bdb;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── Fields ── */
+    .fields { display: flex; flex-direction: column; gap: 18px; margin-bottom: 24px; }
+
+    .field label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-wrap .sym {
+      position: absolute;
+      left: 14px;
+      color: #888;
+      font-size: 0.95rem;
+      pointer-events: none;
+    }
+    .input-wrap .suf {
+      position: absolute;
+      right: 14px;
+      color: #888;
+      font-size: 0.9rem;
+      pointer-events: none;
+    }
+    .input-wrap input {
+      width: 100%;
+      padding: 11px 14px 11px 28px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      color: #111;
+      background: #fafafa;
+      outline: none;
+      transition: border-color .15s, background .15s;
+      -moz-appearance: textfield;
+    }
+    .input-wrap input::-webkit-outer-spin-button,
+    .input-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .input-wrap input.no-sym { padding-left: 14px; }
+    .input-wrap input.has-suf { padding-right: 36px; }
+    .input-wrap input:focus { border-color: #3b5bdb; background: #fff; }
+    .input-wrap input.error { border-color: #e03131; }
+
+    .term-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* ── Buttons ── */
+    .btn {
+      width: 100%;
+      padding: 13px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      letter-spacing: 0.02em;
+    }
+    .btn-primary { background: #3b5bdb; color: #fff; }
+    .btn-primary:hover { background: #2f4cbf; }
+    .btn-primary:active { transform: scale(.99); }
+
+    .btn-reset {
+      margin-top: 10px;
+      background: transparent;
+      color: #888;
+      border: 1.5px solid #e0e0e0;
+    }
+    .btn-reset:hover { border-color: #aaa; color: #444; }
+
+    /* ── Results ── */
+    .results {
+      margin-top: 28px;
+      border-top: 1.5px solid #f0f0f0;
+      padding-top: 24px;
+      display: none;
+    }
+    .results.visible { display: block; }
+
+    .results-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 16px;
+    }
+
+    /* Monthly payment hero */
+    .monthly-hero {
+      background: #3b5bdb;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .monthly-hero .mh-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: rgba(255,255,255,.75);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .monthly-hero .mh-value {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Stat rows */
+    .result-rows { display: flex; flex-direction: column; }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 9px 0;
+      border-bottom: 1px solid #f5f5f5;
+      font-size: 0.9rem;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-row .rl { color: #666; }
+    .result-row .rv {
+      font-weight: 600;
+      color: #111;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Bar ── */
+    .bar-section {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1.5px solid #f0f0f0;
+    }
+    .bar-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .bar-legend {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #555;
+    }
+    .dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+    }
+    .dot-p { background: #3b5bdb; }
+    .dot-i { background: #e8a000; }
+
+    .bar-track {
+      height: 14px;
+      border-radius: 99px;
+      overflow: hidden;
+      background: #e8e8e8;
+      display: flex;
+    }
+    .bar-fill-p { height: 100%; background: #3b5bdb; transition: width .5s ease; }
+    .bar-fill-i { height: 100%; background: #e8a000; transition: width .5s ease; }
+
+    .bar-pcts {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 5px;
+      font-size: 0.78rem;
+      color: #888;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Amortization ── */
+    .amort-section {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1.5px solid #f0f0f0;
+    }
+    .amort-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0;
+    }
+    .amort-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+    .toggle-btn {
+      background: transparent;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #3b5bdb;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .toggle-btn:hover { border-color: #3b5bdb; }
+
+    .toggle-arrow { display: inline-block; transition: transform .25s; font-style: normal; }
+    .toggle-arrow.open { transform: rotate(180deg); }
+
+    .table-wrap {
+      display: none;
+      margin-top: 14px;
+      border-radius: 10px;
+      border: 1px solid #e0e0e0;
+      overflow-x: auto;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    thead th {
+      background: #3b5bdb;
+      color: #fff;
+      text-align: right;
+      padding: 9px 12px;
+      font-weight: 700;
+      font-size: 0.73rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    thead th:first-child { text-align: center; }
+    tbody tr:nth-child(even) { background: #f9f9f9; }
+    tbody tr:hover { background: #f0f4ff; }
+    tbody td {
+      padding: 8px 12px;
+      text-align: right;
+      color: #111;
+      border-bottom: 1px solid #f5f5f5;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    tbody td:first-child { text-align: center; color: #888; font-weight: 600; }
+    tbody tr:last-child td { border-bottom: none; }
+    .td-i { color: #e8a000 !important; font-weight: 500; }
+    .td-b { color: #888 !important; }
+
+    @media (max-width: 480px) {
+      .card { padding: 28px 20px 24px; }
+      .monthly-hero { flex-direction: column; align-items: flex-start; gap: 4px; }
+      .mh-value { font-size: 1.35rem; }
+    }
+  </style>
+</head>
+<body>
+<a href="../index.html" class="back-btn">&#8592; Home</a>
+<div class="card">
+
+  <div class="header">
+    <h1>Loan Calculator</h1>
+    <span class="formula-badge">Monthly Payment · Amortization · Total Interest</span>
+  </div>
+
+  <div class="fields">
+    <div class="field">
+      <label>Loan Amount</label>
+      <div class="input-wrap">
+        <span class="sym">$</span>
+        <input type="text" id="loanAmount" placeholder="250,000" inputmode="numeric" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Annual Interest Rate</label>
+      <div class="input-wrap">
+        <input type="number" id="interestRate" placeholder="6.5" min="0" step="0.01" class="no-sym has-suf" />
+        <span class="suf">%</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Loan Term</label>
+      <div class="term-row">
+        <div class="input-wrap">
+          <input type="number" id="termYears" placeholder="30" min="0" step="1" class="no-sym has-suf" />
+          <span class="suf">yr</span>
+        </div>
+        <div class="input-wrap">
+          <input type="number" id="termMonths" placeholder="0" min="0" max="11" step="1" class="no-sym has-suf" />
+          <span class="suf">mo</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="calculate()">Calculate</button>
+  <button class="btn btn-reset" onclick="resetForm()">Clear &amp; Recalculate</button>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <div class="results-label">Results</div>
+
+    <div class="monthly-hero">
+      <div>
+        <div class="mh-label">Monthly Payment</div>
+        <div class="mh-value" id="r-monthly">—</div>
+      </div>
+    </div>
+
+    <div class="result-rows">
+      <div class="result-row">
+        <span class="rl">Number of Payments</span>
+        <span class="rv" id="r-numPayments">—</span>
+      </div>
+      <div class="result-row">
+        <span class="rl">Total Interest</span>
+        <span class="rv" id="r-interest">—</span>
+      </div>
+      <div class="result-row">
+        <span class="rl">Total Payments</span>
+        <span class="rv" id="r-total">—</span>
+      </div>
+    </div>
+
+    <!-- Bar -->
+    <div class="bar-section">
+      <div class="bar-header">
+        <div class="bar-legend"><span class="dot dot-p"></span>Principal</div>
+        <div class="bar-legend"><span class="dot dot-i"></span>Interest</div>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill-p" id="bar-p" style="width:50%"></div>
+        <div class="bar-fill-i" id="bar-i" style="width:50%"></div>
+      </div>
+      <div class="bar-pcts">
+        <span id="pct-p">—</span>
+        <span id="pct-i">—</span>
+      </div>
+    </div>
+
+    <!-- Amortization -->
+    <div class="amort-section">
+      <div class="amort-header">
+        <span class="amort-title">Amortization Schedule</span>
+        <button class="toggle-btn" onclick="toggleTable()">
+          Show Table <i class="toggle-arrow" id="toggle-arrow">▾</i>
+        </button>
+      </div>
+      <div class="table-wrap" id="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Payment</th>
+              <th>Principal</th>
+              <th>Interest</th>
+              <th>Balance</th>
+            </tr>
+          </thead>
+          <tbody id="amort-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const fmt = (n) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+
+  // Comma formatting for loan amount
+  const loanInput = document.getElementById('loanAmount');
+  loanInput.addEventListener('input', () => {
+    const raw = loanInput.value.replace(/[^\d]/g, '');
+    if (!raw) { loanInput.value = ''; return; }
+    loanInput.value = Number(raw).toLocaleString('en-US');
+  });
+
+  function calculate() {
+    const P = parseFloat(loanInput.value.replace(/,/g, ''));
+    const annualRate = parseFloat(document.getElementById('interestRate').value);
+    const years  = parseInt(document.getElementById('termYears').value)  || 0;
+    const months = parseInt(document.getElementById('termMonths').value) || 0;
+    const n = years * 12 + months;
+
+    if (!P || P <= 0 || isNaN(annualRate) || annualRate < 0 || n <= 0) {
+      document.querySelectorAll('.fields input').forEach(el => {
+        el.classList.add('error');
+        setTimeout(() => el.classList.remove('error'), 1200);
+      });
+      return;
+    }
+
+    const r = annualRate / 100 / 12;
+    const monthly = r === 0 ? P / n : P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    const totalPay = monthly * n;
+    const totalInt = totalPay - P;
+    const pPct = (P / totalPay * 100).toFixed(1);
+    const iPct = (totalInt / totalPay * 100).toFixed(1);
+
+    document.getElementById('r-monthly').textContent    = fmt(monthly);
+    document.getElementById('r-numPayments').textContent = n.toLocaleString();
+    document.getElementById('r-interest').textContent   = fmt(totalInt);
+    document.getElementById('r-total').textContent      = fmt(totalPay);
+    document.getElementById('bar-p').style.width = pPct + '%';
+    document.getElementById('bar-i').style.width = iPct + '%';
+    document.getElementById('pct-p').textContent = pPct + '%';
+    document.getElementById('pct-i').textContent = iPct + '%';
+
+    // Build amortization table
+    const tbody = document.getElementById('amort-body');
+    tbody.innerHTML = '';
+    let balance = P;
+    for (let i = 1; i <= n; i++) {
+      const interest  = balance * r;
+      const principal = monthly - interest;
+      balance = Math.max(0, balance - principal);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${i}</td><td>${fmt(monthly)}</td><td>${fmt(principal)}</td><td class="td-i">${fmt(interest)}</td><td class="td-b">${fmt(balance)}</td>`;
+      tbody.appendChild(tr);
+    }
+
+    document.getElementById('results').classList.add('visible');
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function resetForm() {
+    loanInput.value = '';
+    document.getElementById('interestRate').value = '';
+    document.getElementById('termYears').value = '';
+    document.getElementById('termMonths').value = '';
+    document.getElementById('results').classList.remove('visible');
+    document.getElementById('table-wrap').style.display = 'none';
+    document.getElementById('toggle-arrow').className = 'toggle-arrow';
+    document.querySelector('.toggle-btn').childNodes[0].textContent = 'Show Table ';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function toggleTable() {
+    const wrap  = document.getElementById('table-wrap');
+    const arrow = document.getElementById('toggle-arrow');
+    const btn   = document.querySelector('.toggle-btn');
+    const isOpen = wrap.style.display === 'block';
+    wrap.style.display = isOpen ? 'none' : 'block';
+    arrow.className = 'toggle-arrow' + (isOpen ? '' : ' open');
+    btn.childNodes[0].textContent = isOpen ? 'Show Table ' : 'Hide Table ';
+  }
+
+  document.addEventListener('keydown', (e) => { if (e.key === 'Enter') calculate(); });
+</script>
+</body>
+</html>
