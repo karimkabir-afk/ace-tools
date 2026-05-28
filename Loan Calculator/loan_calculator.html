@@ -382,6 +382,10 @@
 
     <div class="result-rows">
       <div class="result-row">
+        <span class="rl">Yearly Payment</span>
+        <span class="rv" id="r-yearly">—</span>
+      </div>
+      <div class="result-row">
         <span class="rl">Number of Payments</span>
         <span class="rv" id="r-numPayments">—</span>
       </div>
@@ -472,6 +476,7 @@
     const iPct = (totalInt / totalPay * 100).toFixed(1);
 
     document.getElementById('r-monthly').textContent    = fmt(monthly);
+    document.getElementById('r-yearly').textContent     = fmt(monthly * 12);
     document.getElementById('r-numPayments').textContent = n.toLocaleString();
     document.getElementById('r-interest').textContent   = fmt(totalInt);
     document.getElementById('r-total').textContent      = fmt(totalPay);
@@ -502,6 +507,7 @@
     document.getElementById('interestRate').value = '';
     document.getElementById('termYears').value = '';
     document.getElementById('termMonths').value = '';
+    document.getElementById('r-yearly').textContent = '—';
     document.getElementById('results').classList.remove('visible');
     document.getElementById('table-wrap').style.display = 'none';
     document.getElementById('toggle-arrow').className = 'toggle-arrow';
