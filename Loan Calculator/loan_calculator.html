@@ -161,25 +161,30 @@
       margin-bottom: 16px;
     }
 
-    /* Monthly payment hero */
+    /* Monthly / Yearly payment heroes */
+    .hero-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
     .monthly-hero {
       background: #3b5bdb;
       border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 16px;
+      padding: 16px 18px;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 4px;
     }
     .monthly-hero .mh-label {
-      font-size: 0.82rem;
+      font-size: 0.75rem;
       font-weight: 700;
       color: rgba(255,255,255,.75);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
     .monthly-hero .mh-value {
-      font-size: 1.6rem;
+      font-size: 1.35rem;
       font-weight: 800;
       color: #fff;
       font-variant-numeric: tabular-nums;
@@ -320,8 +325,8 @@
 
     @media (max-width: 480px) {
       .card { padding: 28px 20px 24px; }
-      .monthly-hero { flex-direction: column; align-items: flex-start; gap: 4px; }
-      .mh-value { font-size: 1.35rem; }
+      .hero-row { grid-template-columns: 1fr; }
+      .mh-value { font-size: 1.2rem; }
     }
   </style>
 </head>
@@ -373,18 +378,18 @@
   <div class="results" id="results">
     <div class="results-label">Results</div>
 
-    <div class="monthly-hero">
-      <div>
+    <div class="hero-row">
+      <div class="monthly-hero">
         <div class="mh-label">Monthly Payment</div>
         <div class="mh-value" id="r-monthly">—</div>
+      </div>
+      <div class="monthly-hero">
+        <div class="mh-label">Yearly Payment</div>
+        <div class="mh-value" id="r-yearly">—</div>
       </div>
     </div>
 
     <div class="result-rows">
-      <div class="result-row">
-        <span class="rl">Yearly Payment</span>
-        <span class="rv" id="r-yearly">—</span>
-      </div>
       <div class="result-row">
         <span class="rl">Number of Payments</span>
         <span class="rv" id="r-numPayments">—</span>
