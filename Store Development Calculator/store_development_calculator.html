@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Store Development Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    .back-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #3b5bdb;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 20px;
+      padding: 7px 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      transition: border-color 0.15s;
+      z-index: 100;
+    }
+    .back-btn:hover { border-color: #3b5bdb; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 70px 16px 60px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 620px;
+      padding: 40px 40px 36px;
+    }
+
+    .header { margin-bottom: 28px; }
+    .header h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #111;
+      margin-bottom: 6px;
+    }
+    .formula-badge {
+      display: inline-block;
+      background: #f0f4ff;
+      color: #3b5bdb;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.01em;
+    }
+
+    .section-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      padding-bottom: 10px;
+      border-bottom: 1.5px solid #f0f0f0;
+      margin-bottom: 16px;
+      margin-top: 24px;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .section-title .sub {
+      font-weight: 500;
+      color: #bbb;
+      font-size: 0.72rem;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .field { margin-bottom: 14px; }
+    .field-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 7px;
+    }
+    .field-label-row label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-wrap .sym {
+      position: absolute;
+      left: 13px;
+      color: #888;
+      font-size: 0.92rem;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .input-wrap .suf {
+      position: absolute;
+      right: 13px;
+      color: #888;
+      font-size: 0.88rem;
+      pointer-events: none;
+    }
+    .input-wrap input {
+      width: 100%;
+      padding: 11px 13px 11px 28px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 0.93rem;
+      color: #111;
+      background: #fafafa;
+      outline: none;
+      transition: border-color .15s, background .15s;
+      -moz-appearance: textfield;
+    }
+    .input-wrap input::-webkit-outer-spin-button,
+    .input-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .input-wrap input.no-sym { padding-left: 13px; }
+    .input-wrap input.has-suf { padding-right: 32px; }
+    .input-wrap input:focus { border-color: #3b5bdb; background: #fff; }
+    .input-wrap input.error { border-color: #e03131; }
+
+    /* mode toggle for target $ / % */
+    .mode-toggle {
+      display: flex;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .mode-toggle button {
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      border: none;
+      background: #f5f5f5;
+      color: #888;
+      cursor: pointer;
+      transition: background .12s, color .12s;
+    }
+    .mode-toggle button.active { background: #3b5bdb; color: #fff; }
+
+    /* auto-calc rows */
+    .auto-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f0f4ff;
+      border-radius: 10px;
+      padding: 11px 14px;
+      margin-bottom: 14px;
+    }
+    .auto-row .auto-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .auto-row .auto-value {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #3b5bdb;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* financing summary */
+    .fin-summary {
+      background: #f8f9fa;
+      border: 1.5px solid #e8e8e8;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .fin-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.83rem;
+    }
+    .fin-row .fin-lbl { color: #777; }
+    .fin-row .fin-val { font-weight: 700; color: #111; font-variant-numeric: tabular-nums; }
+    .fin-row.total .fin-lbl {
+      color: #3b5bdb; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.78rem;
+    }
+    .fin-row.total .fin-val { color: #3b5bdb; font-size: 0.95rem; }
+
+    /* pct-only row: input + live $ display */
+    .pct-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .pct-row .input-wrap { flex: 1; }
+    .computed-dollar {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #3b5bdb;
+      white-space: nowrap;
+      min-width: 90px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* two-column expense grid */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 16px;
+    }
+
+    /* buttons */
+    .btn {
+      width: 100%;
+      padding: 13px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      letter-spacing: 0.02em;
+    }
+    .btn-primary { background: #3b5bdb; color: #fff; margin-top: 8px; }
+    .btn-primary:hover { background: #2f4cbf; }
+    .btn-primary:active { transform: scale(.99); }
+    .btn-reset {
+      margin-top: 10px;
+      background: transparent;
+      color: #888;
+      border: 1.5px solid #e0e0e0;
+    }
+    .btn-reset:hover { border-color: #aaa; color: #444; }
+
+    /* results */
+    .results {
+      margin-top: 28px;
+      border-top: 1.5px solid #f0f0f0;
+      padding-top: 24px;
+      display: none;
+    }
+    .results.visible { display: block; }
+    .results-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 16px;
+    }
+
+    /* hero tiles */
+    .ni-hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .ni-tile {
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: #f8f9fa;
+      border: 1.5px solid #eee;
+    }
+    .ni-tile.primary { background: #3b5bdb; border-color: #3b5bdb; }
+    .ni-tile.accent  { background: #f0f4ff; border-color: #c5d0fa; }
+    .ni-tile .tile-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #888;
+      margin-bottom: 5px;
+    }
+    .ni-tile.primary .tile-label { color: rgba(255,255,255,0.75); }
+    .ni-tile.accent  .tile-label { color: #3b5bdb; }
+    .ni-tile .tile-value {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #111;
+      font-variant-numeric: tabular-nums;
+    }
+    .ni-tile.primary .tile-value { color: #fff; }
+    .ni-tile.accent  .tile-value { color: #3b5bdb; }
+    .tile-value.pos { color: #2f9e44; }
+    .tile-value.neg { color: #e03131; }
+    .tile-sub {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #999;
+      margin-top: 3px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* output table */
+    .table-wrap {
+      border-radius: 10px;
+      border: 1px solid #e0e0e0;
+      overflow: hidden;
+    }
+    .out-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+    .out-table thead th {
+      background: #3b5bdb;
+      color: #fff;
+      padding: 9px 12px;
+      text-align: right;
+      font-weight: 700;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    .out-table thead th:first-child { text-align: left; }
+    .out-table tbody tr:nth-child(even) { background: #f9f9f9; }
+    .out-table tbody tr:hover { background: #f0f4ff; }
+    .out-table tbody td {
+      padding: 9px 12px;
+      text-align: right;
+      color: #444;
+      border-bottom: 1px solid #f5f5f5;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .out-table tbody td:first-child { text-align: left; }
+    .out-table tbody tr:last-child td { border-bottom: none; }
+    .row-subtotal td {
+      font-weight: 700 !important;
+      color: #111 !important;
+      background: #f0f4ff !important;
+      border-top: 1.5px solid #dce3ff !important;
+      border-bottom: 1.5px solid #dce3ff !important;
+    }
+    .row-net td {
+      font-weight: 800 !important;
+      color: #111 !important;
+      border-top: 2px solid #3b5bdb !important;
+    }
+    .row-net td.pos { color: #2f9e44 !important; }
+    .row-net td.neg { color: #e03131 !important; }
+    .indent { padding-left: 22px !important; color: #666 !important; }
+
+    /* error hint */
+    .calc-error {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #fff5f5;
+      border: 1.5px solid #ffc9c9;
+      border-radius: 10px;
+      font-size: 0.83rem;
+      color: #e03131;
+      font-weight: 600;
+    }
+    .calc-error.visible { display: block; }
+
+    @media (max-width: 520px) {
+      .card { padding: 28px 20px 24px; }
+      .ni-hero { grid-template-columns: 1fr; }
+      .ni-tile.primary { order: -1; }
+    }
+  </style>
+</head>
+<body>
+<a href="../index.html" class="back-btn">&#8592; Home</a>
+
+<div class="card">
+  <div class="header">
+    <h1>Store Development Calculator</h1>
+    <span class="formula-badge">P&amp;I &middot; P&amp;L &middot; 4W EBITDA &middot; Required Sales</span>
+  </div>
+
+  <!-- 1. Target Net Income -->
+  <div class="section-title">Target <span class="sub">Net income you want after P&amp;I</span></div>
+
+  <div class="field">
+    <div class="field-label-row">
+      <label>Target Net Income</label>
+      <div class="mode-toggle">
+        <button id="target-btn-dollar" class="active" onclick="setTargetMode('dollar')">$</button>
+        <button id="target-btn-pct"               onclick="setTargetMode('pct')">%</button>
+      </div>
+    </div>
+    <div class="input-wrap" id="target-wrap-dollar">
+      <span class="sym">$</span>
+      <input type="text" id="target_dollar" placeholder="0" inputmode="numeric" autocomplete="off" />
+    </div>
+    <div class="input-wrap" id="target-wrap-pct" style="display:none;">
+      <input type="text" id="target_pct" placeholder="4.5" inputmode="decimal" class="no-sym has-suf" autocomplete="off" />
+      <span class="suf">% of Sales</span>
+    </div>
+  </div>
+
+  <!-- 2. Project Financing -->
+  <div class="section-title">Project Financing <span class="sub">Land + Construction → P&amp;I auto-calculated</span></div>
+
+  <div class="two-col">
+    <div class="field">
+      <div class="field-label-row"><label>Land Cost</label></div>
+      <div class="input-wrap">
+        <span class="sym">$</span>
+        <input type="text" id="land_cost" placeholder="500,000" inputmode="numeric" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label-row"><label>Construction Cost</label></div>
+      <div class="input-wrap">
+        <span class="sym">$</span>
+        <input type="text" id="construction_cost" placeholder="1,200,000" inputmode="numeric" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label-row"><label>Interest Rate</label></div>
+      <div class="input-wrap">
+        <input type="text" id="interest_rate" placeholder="7.5" inputmode="decimal" class="no-sym has-suf" autocomplete="off" />
+        <span class="suf">% / yr</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label-row"><label>Loan Term</label></div>
+      <div class="input-wrap">
+        <input type="text" id="loan_term" placeholder="20" inputmode="numeric" class="no-sym has-suf" autocomplete="off" />
+        <span class="suf">years</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="auto-row" id="total-project-row" style="display:none;">
+    <span class="auto-label">Total Project Cost</span>
+    <span class="auto-value" id="total-project-val">—</span>
+  </div>
+
+  <div class="fin-summary" id="fin-summary" style="display:none;">
+    <div class="fin-row">
+      <span class="fin-lbl">Monthly P&amp;I Payment</span>
+      <span class="fin-val" id="monthly-pi">—</span>
+    </div>
+    <div class="fin-row total">
+      <span class="fin-lbl">Period P&amp;I (28 Days)</span>
+      <span class="fin-val" id="period-pi">—</span>
+    </div>
+  </div>
+
+  <!-- 3. Expenses -->
+  <div class="section-title">Expenses</div>
+
+  <div class="two-col">
+    <div class="field">
+      <div class="field-label-row"><label>Food Cost</label></div>
+      <div class="input-wrap">
+        <input type="text" id="food_pct" placeholder="30.5" inputmode="decimal" class="no-sym has-suf" autocomplete="off" />
+        <span class="suf">%</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label-row"><label>Labor Cost</label></div>
+      <div class="input-wrap">
+        <input type="text" id="labor_pct" placeholder="27" inputmode="decimal" class="no-sym has-suf" autocomplete="off" />
+        <span class="suf">%</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label-row"><label>Royalty &amp; Ad Fund</label></div>
+      <div class="input-wrap">
+        <input type="text" id="royalty_pct" placeholder="10.0" inputmode="decimal" class="no-sym has-suf" autocomplete="off" />
+        <span class="suf">%</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label-row"><label>G&amp;A</label></div>
+      <div class="input-wrap">
+        <span class="sym">$</span>
+        <input type="text" id="gna_pct" placeholder="12,500" inputmode="numeric" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label-row"><label>R&amp;M</label></div>
+      <div class="input-wrap">
+        <input type="text" id="rnm_pct" placeholder="1.3" inputmode="decimal" class="no-sym has-suf" autocomplete="off" />
+        <span class="suf">%</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label-row"><label>Utilities</label></div>
+      <div class="input-wrap">
+        <span class="sym">$</span>
+        <input type="text" id="util_pct" placeholder="5,000" inputmode="numeric" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label-row"><label>Rent (P&amp;I)</label></div>
+      <div class="input-wrap">
+        <span class="sym">$</span>
+        <input type="text" id="rent" placeholder="Auto from financing" readonly tabindex="-1" style="background:#f0f4ff;color:#3b5bdb;font-weight:700;cursor:not-allowed;" />
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label-row"><label>CG&amp;A</label></div>
+      <div class="input-wrap">
+        <span class="sym">$</span>
+        <input type="text" id="cga_pct" placeholder="4,000" inputmode="numeric" autocomplete="off" />
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="calculate()">Calculate Required Sales &amp; P&amp;L</button>
+  <button class="btn btn-reset" onclick="resetForm()">Clear &amp; Recalculate</button>
+
+  <div class="calc-error" id="calc-error"></div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <div class="results-label">Results</div>
+
+    <!-- Required Sales row -->
+    <div class="ni-hero" style="grid-template-columns:1fr 1fr; margin-bottom:10px;">
+      <div class="ni-tile accent">
+        <div class="tile-label">Required Sales — Period</div>
+        <div class="tile-value" id="hero-sales">—</div>
+      </div>
+      <div class="ni-tile accent">
+        <div class="tile-label">Required Sales — Year (×13)</div>
+        <div class="tile-value" id="hero-sales-yr">—</div>
+      </div>
+    </div>
+
+    <!-- EBITDA row -->
+    <div class="ni-hero" style="grid-template-columns:1fr 1fr; margin-bottom:10px;">
+      <div class="ni-tile">
+        <div class="tile-label">4W EBITDA</div>
+        <div class="tile-value" id="hero-ebitda4w">—</div>
+        <div class="tile-sub" id="hero-ebitda4w-pct">—</div>
+      </div>
+      <div class="ni-tile">
+        <div class="tile-label">Company EBITDA</div>
+        <div class="tile-value" id="hero-ebitda-co">—</div>
+        <div class="tile-sub" id="hero-ebitda-co-pct">—</div>
+      </div>
+    </div>
+
+    <!-- Net Income row -->
+    <div class="ni-hero" style="grid-template-columns:1fr; margin-bottom:20px;">
+      <div class="ni-tile primary">
+        <div class="tile-label">Net Income</div>
+        <div class="tile-value" id="hero-ni">—</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="out-table">
+        <thead>
+          <tr>
+            <th>Line Item</th>
+            <th>$ Period</th>
+            <th>$ Year (×13)</th>
+            <th>% of Sales</th>
+          </tr>
+        </thead>
+        <tbody id="out-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const DAYS = 28;
+  const DAYS_PER_MONTH = 365.25 / 12;
+
+  let targetMode = 'dollar';
+
+  function setTargetMode(m) {
+    targetMode = m;
+    document.getElementById('target-btn-dollar').classList.toggle('active', m === 'dollar');
+    document.getElementById('target-btn-pct').classList.toggle('active', m === 'pct');
+    document.getElementById('target-wrap-dollar').style.display = m === 'dollar' ? '' : 'none';
+    document.getElementById('target-wrap-pct').style.display   = m === 'pct'    ? '' : 'none';
+    updateLive();
+  }
+
+  function parseMoney(v) {
+    const n = parseFloat((v || '').replace(/,/g, '').replace(/\$/g, '').trim());
+    return isNaN(n) ? 0 : n;
+  }
+  function parsePct(v) {
+    const n = parseFloat((v || '').replace(/%/g, '').trim());
+    return isNaN(n) ? 0 : n;
+  }
+  function fmtD(n) {
+    const abs = Math.round(Math.abs(n));
+    return (n < 0 ? '-' : '') + '$' + abs.toLocaleString('en-US');
+  }
+  function fmtPct(n) { return n.toFixed(2) + '%'; }
+
+  const DOLLAR_IDS = ['target_dollar', 'land_cost', 'construction_cost', 'gna_pct', 'util_pct', 'cga_pct'];
+
+  function formatCommaInput(input) {
+    if (!DOLLAR_IDS.includes(input.id)) return;
+    const raw = input.value.replace(/,/g, '');
+    if (raw === '' || raw === '-') return;
+    const n = parseFloat(raw);
+    if (!isNaN(n)) {
+      const caretAt = input.selectionStart;
+      const commasBefore = (input.value.slice(0, caretAt).match(/,/g) || []).length;
+      const parts = raw.split('.');
+      parts[0] = Math.floor(Math.abs(parseFloat(parts[0]))).toLocaleString('en-US');
+      const formatted = parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0];
+      input.value = formatted;
+      // restore caret, accounting for added/removed commas
+      const newCommas = (formatted.slice(0, caretAt).match(/,/g) || []).length;
+      const newPos = Math.min(caretAt + (newCommas - commasBefore), formatted.length);
+      input.setSelectionRange(newPos, newPos);
+    }
+  }
+
+  function calcPI(land, construction, annualRate, years) {
+    const principal = land + construction;
+    if (principal <= 0 || annualRate <= 0 || years <= 0) return { monthly: 0, period: 0 };
+    const r = annualRate / 100 / 12;
+    const n = years * 12;
+    const monthly = principal * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+    return { monthly, period: monthly * (DAYS / DAYS_PER_MONTH) };
+  }
+
+  function getInputs() {
+    return {
+      land:         parseMoney(document.getElementById('land_cost').value),
+      construction: parseMoney(document.getElementById('construction_cost').value),
+      rate:         parsePct(document.getElementById('interest_rate').value),
+      term:         parseMoney(document.getElementById('loan_term').value),
+      foodPct:      parsePct(document.getElementById('food_pct').value),
+      laborPct:     parsePct(document.getElementById('labor_pct').value),
+      royaltyPct:   parsePct(document.getElementById('royalty_pct').value),
+      gna:          parseMoney(document.getElementById('gna_pct').value),
+      rnmPct:       parsePct(document.getElementById('rnm_pct').value),
+      util:         parseMoney(document.getElementById('util_pct').value),
+      rent:         parseMoney(document.getElementById('rent').value),
+      cga:          parseMoney(document.getElementById('cga_pct').value),
+    };
+  }
+
+  function updateLive() {
+    const { land, construction, rate, term } = getInputs();
+
+    const total = land + construction;
+    const projRow = document.getElementById('total-project-row');
+    if (total > 0) {
+      projRow.style.display = 'flex';
+      document.getElementById('total-project-val').textContent = fmtD(total);
+    } else {
+      projRow.style.display = 'none';
+    }
+
+    const { monthly, period } = calcPI(land, construction, rate, term);
+    const finEl = document.getElementById('fin-summary');
+    if (monthly > 0) {
+      finEl.style.display = 'flex';
+      document.getElementById('monthly-pi').textContent = fmtD(monthly);
+      document.getElementById('period-pi').textContent  = fmtD(period);
+      document.getElementById('rent').value = Math.round(period).toLocaleString('en-US');
+    } else {
+      finEl.style.display = 'none';
+    }
+  }
+
+  function calculate() {
+    const errEl = document.getElementById('calc-error');
+    errEl.classList.remove('visible');
+
+    // Mandatory field check
+    const required = [
+      { id: targetMode === 'dollar' ? 'target_dollar' : 'target_pct', label: 'Target Net Income' },
+      { id: 'land_cost',          label: 'Land Cost' },
+      { id: 'construction_cost',  label: 'Construction Cost' },
+      { id: 'interest_rate',      label: 'Interest Rate' },
+      { id: 'loan_term',          label: 'Loan Term' },
+      { id: 'food_pct',           label: 'Food Cost' },
+      { id: 'labor_pct',          label: 'Labor Cost' },
+      { id: 'royalty_pct',        label: 'Royalty & Ad Fund' },
+      { id: 'gna_pct',            label: 'G&A' },
+      { id: 'rnm_pct',            label: 'R&M' },
+      { id: 'util_pct',           label: 'Utilities' },
+      { id: 'cga_pct',            label: 'CG&A' },
+    ];
+    const missing = required.filter(f => document.getElementById(f.id).value.trim() === '');
+    if (missing.length > 0) {
+      missing.forEach(f => {
+        const el = document.getElementById(f.id);
+        el.classList.add('error');
+        setTimeout(() => el.classList.remove('error'), 2000);
+      });
+      errEl.textContent = 'Please fill in all fields: ' + missing.map(f => f.label).join(', ');
+      errEl.classList.add('visible');
+      return;
+    }
+    if (parseMoney(document.getElementById('rent').value) === 0) {
+      errEl.textContent = 'Please complete the Project Financing section — Rent (P&I) must be calculated first.';
+      errEl.classList.add('visible');
+      return;
+    }
+
+    const { land, construction, rate, term,
+            foodPct, laborPct, royaltyPct, gna, rnmPct, util, rent, cga } = getInputs();
+
+    // Variable costs as % of sales; G&A, Utilities, CG&A are fixed $
+    const totalVarPct   = foodPct + laborPct + royaltyPct + rnmPct;
+    const contribMargin = 1 - totalVarPct / 100;
+    const totalFixed    = rent + gna + util + cga; // fixed $ costs
+
+    // Solve for required sales:
+    // NI = Sales × contribMargin - totalFixed
+    let sales;
+
+    if (targetMode === 'dollar') {
+      const targetNI = parseMoney(document.getElementById('target_dollar').value);
+      if (contribMargin <= 0) {
+        errEl.textContent = 'Variable expense percentages sum to 100% or more — no sales level can be profitable.';
+        errEl.classList.add('visible');
+        return;
+      }
+      sales = (targetNI + totalFixed) / contribMargin;
+    } else {
+      const targetPct = parsePct(document.getElementById('target_pct').value) / 100;
+      const effectiveMargin = contribMargin - targetPct;
+      if (effectiveMargin <= 0) {
+        errEl.textContent = 'Target net income % plus variable expenses leave no margin.';
+        errEl.classList.add('visible');
+        return;
+      }
+      sales = totalFixed / effectiveMargin;
+    }
+
+    if (!isFinite(sales) || sales <= 0) {
+      errEl.textContent = 'Could not compute a valid sales figure. Please check your inputs.';
+      errEl.classList.add('visible');
+      return;
+    }
+
+    // Compute P&L at required sales
+    const food    = sales * foodPct    / 100;
+    const labor   = sales * laborPct   / 100;
+    const royalty = sales * royaltyPct / 100;
+    const rnm     = sales * rnmPct     / 100;
+
+    const ebitda4w  = sales - food - labor - royalty - gna - rnm - rent - util;
+    const ebitdaCo  = ebitda4w - cga;
+    const netIncome = ebitdaCo;
+
+    // Hero tiles
+    document.getElementById('hero-sales').textContent         = fmtD(sales);
+    document.getElementById('hero-sales-yr').textContent      = fmtD(sales * 13);
+    document.getElementById('hero-ebitda4w').textContent      = fmtD(ebitda4w);
+    document.getElementById('hero-ebitda4w-pct').textContent  = fmtPct(ebitda4w / sales * 100);
+    document.getElementById('hero-ebitda-co').textContent     = fmtD(ebitdaCo);
+    document.getElementById('hero-ebitda-co-pct').textContent = fmtPct(ebitdaCo / sales * 100);
+    document.getElementById('hero-ni').textContent            = fmtD(netIncome);
+
+    const setColor = (id, val) => {
+      const el = document.getElementById(id);
+      el.className = 'tile-value' + (val < 0 ? ' neg' : val > 0 ? ' pos' : '');
+    };
+    setColor('hero-ebitda4w', ebitda4w);
+    setColor('hero-ebitda-co', ebitdaCo);
+
+    // P&L table
+    const rows = [
+      { label: 'Sales (Required)',       val: sales,      type: 'normal' },
+      { label: 'Food Cost',              val: food,       type: 'expense' },
+      { label: 'Labor Cost',             val: labor,      type: 'expense' },
+      { label: 'Royalty &amp; Ad Fund',  val: royalty,    type: 'expense' },
+      { label: 'G&amp;A',               val: gna,        type: 'expense' },
+      { label: 'R&amp;M',               val: rnm,        type: 'expense' },
+      { label: 'Rent (P&amp;I)',         val: rent,       type: 'expense' },
+      { label: 'Utilities',              val: util,       type: 'expense' },
+      { label: '4W EBITDA',             val: ebitda4w,   type: 'subtotal' },
+      { label: 'CG&amp;A',              val: cga,        type: 'expense' },
+      { label: 'Net Income',             val: netIncome,  type: 'net' },
+    ];
+
+    const tbody = document.getElementById('out-body');
+    tbody.innerHTML = '';
+    rows.forEach(row => {
+      const pct = row.label.startsWith('Sales') ? 100.0 : (sales > 0 ? row.val / sales * 100 : 0);
+      const yr  = row.val * 13;
+      const tr  = document.createElement('tr');
+      if      (row.type === 'net')      tr.className = 'row-net';
+      else if (row.type === 'subtotal') tr.className = 'row-subtotal';
+      const indent = row.type === 'expense' ? ' class="indent"' : '';
+      const netCls = row.type === 'net' ? (netIncome < 0 ? ' class="neg"' : ' class="pos"') : '';
+      tr.innerHTML =
+        `<td${indent}>${row.label}</td>` +
+        `<td${netCls}>${fmtD(row.val)}</td>` +
+        `<td${netCls}>${fmtD(yr)}</td>` +
+        `<td${netCls}>${fmtPct(pct)}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('results').classList.add('visible');
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function resetForm() {
+    document.querySelectorAll('input').forEach(el => { el.value = ''; el.classList.remove('error'); });
+    document.getElementById('calc-error').classList.remove('visible');
+    document.getElementById('results').classList.remove('visible');
+    document.getElementById('total-project-row').style.display = 'none';
+    document.getElementById('fin-summary').style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  document.querySelectorAll('input').forEach(input => {
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+    input.addEventListener('input',   () => { formatCommaInput(input); updateLive(); });
+    input.addEventListener('blur',    () => formatCommaInput(input));
+  });
+</script>
+</body>
+</html>
