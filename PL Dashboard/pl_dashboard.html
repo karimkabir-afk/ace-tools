@@ -337,7 +337,7 @@ svg{width:100%;display:block;overflow:visible}
     <h1>ACE Brands</h1>
     <span class="sub">P&amp;L</span>
   </div>
-  <div class="tagline">20-store portfolio · P1 2024 – P4 2026 · offline</div>
+  <div class="tagline" id="portfolioTagline">20-store portfolio · live data</div>
 </header>
 
 <div class="panel">
@@ -518,9 +518,13 @@ document.addEventListener('dashboardDataReady', function _initDash() {
   const RAW = window.RAW;
 
 /* ---------- period helpers ---------- */
+// Dynamically determine max period per year from actual data
+const _maxPnum = {};
+for (const r of RAW){ if (!_maxPnum[r.year] || r.pnum > _maxPnum[r.year]) _maxPnum[r.year] = r.pnum; }
 const ORDER = [];
-for (const y of [2024,2025,2026]){
-  const max = y===2026?4:13;
+const _years = [...new Set(RAW.map(r=>r.year))].sort((a,b)=>a-b);
+for (const y of _years){
+  const max = _maxPnum[y] || 13;
   for(let p=1;p<=max;p++) ORDER.push({pnum:p,year:y,key:`P${p} ${y}`});
 }
 const keyOf = r => `P${r.pnum} ${r.year}`;
@@ -585,9 +589,17 @@ function periodLabel(mode,single,year,rFrom,rTo){
 }
 
 /* ---------- STATE ---------- */
-const S={ scope:'all', store:STORES[0].name, custom:new Set(), pmode:'single', single:'P4 2026',
-  year:2026, rFrom:'P1 2026', rTo:'P4 2026', view:'pl', trendMode:'combined', trendPct:null,
-  cmp:false, cmode:'single', cSingle:'P4 2025', cYear:2025, cRFrom:'P1 2025', cRTo:'P4 2025', cmpNorm:false };
+const _latestKey = KEYS[KEYS.length-1]; // e.g. "P5 2026"
+const _latestYear = _maxPnum ? Math.max(...Object.keys(_maxPnum).map(Number)) : 2026;
+const _prevKey = KEYS.slice().reverse().find(k=>k.includes((_latestYear-1).toString())) || KEYS[KEYS.length-2] || _latestKey;
+const _latestYearKeys = KEYS.filter(k=>k.endsWith(String(_latestYear)));
+const _rFrom = _latestYearKeys[0] || _latestKey;
+// update tagline
+const _tl = document.getElementById('portfolioTagline');
+if(_tl) _tl.textContent = `${STORES.length}-store portfolio · P1 ${_years[0]} – ${_latestKey} · live`;
+const S={ scope:'all', store:STORES[0].name, custom:new Set(), pmode:'single', single:_latestKey,
+  year:_latestYear, rFrom:_rFrom, rTo:_latestKey, view:'pl', trendMode:'combined', trendPct:null,
+  cmp:false, cmode:'single', cSingle:_prevKey, cYear:_latestYear-1, cRFrom:_rFrom.replace(String(_latestYear),String(_latestYear-1)), cRTo:_prevKey, cmpNorm:false };
 
 /* ---------- populate selects ---------- */
 function opts(el,arr,val){ el.innerHTML=arr.map(x=>`<option value="${x}">${x}</option>`).join(''); el.value=val; }
