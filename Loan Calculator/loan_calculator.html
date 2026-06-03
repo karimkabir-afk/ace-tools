@@ -119,6 +119,67 @@
 
     .term-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
+    /* ── Rate Type Toggle ── */
+    .rate-toggle {
+      display: flex;
+      background: #f0f2f5;
+      border-radius: 10px;
+      padding: 3px;
+      gap: 3px;
+      margin-bottom: 12px;
+    }
+    .rtoggle-btn {
+      flex: 1;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #888;
+      background: transparent;
+      cursor: pointer;
+      transition: background .15s, color .15s, box-shadow .15s;
+      letter-spacing: 0.01em;
+    }
+    .rtoggle-btn.active {
+      background: #fff;
+      color: #3b5bdb;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Floating rate sub-fields */
+    .floating-fields {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .floating-fields.visible { display: flex; }
+
+    .sofr-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .effective-rate {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f0f4ff;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-top: 2px;
+    }
+    .effective-rate .er-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #3b5bdb;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .effective-rate .er-value {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #3b5bdb;
+      font-variant-numeric: tabular-nums;
+    }
+
     /* ── Buttons ── */
     .btn {
       width: 100%;
@@ -208,6 +269,38 @@
       font-variant-numeric: tabular-nums;
     }
 
+    /* ── Per Diem ── */
+    .perdiem-section {
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: #fffbf0;
+      border: 1.5px solid #f0d080;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .perdiem-left .pd-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #a07000;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .perdiem-left .pd-sub {
+      font-size: 0.72rem;
+      color: #b08020;
+    }
+    .perdiem-value {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #a07000;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
     /* ── Bar ── */
     .bar-section {
       margin-top: 20px;
@@ -227,10 +320,7 @@
       font-weight: 600;
       color: #555;
     }
-    .dot {
-      width: 9px; height: 9px;
-      border-radius: 50%;
-    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; }
     .dot-p { background: #3b5bdb; }
     .dot-i { background: #e8a000; }
 
@@ -263,7 +353,6 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 0;
     }
     .amort-title {
       font-size: 0.8rem;
@@ -327,6 +416,7 @@
       .card { padding: 28px 20px 24px; }
       .hero-row { grid-template-columns: 1fr; }
       .mh-value { font-size: 1.2rem; }
+      .sofr-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -340,6 +430,8 @@
   </div>
 
   <div class="fields">
+
+    <!-- Loan Amount -->
     <div class="field">
       <label>Loan Amount</label>
       <div class="input-wrap">
@@ -348,14 +440,50 @@
       </div>
     </div>
 
+    <!-- Interest Rate with Fixed / Floating toggle -->
     <div class="field">
-      <label>Annual Interest Rate</label>
-      <div class="input-wrap">
-        <input type="number" id="interestRate" placeholder="6.5" min="0" step="0.01" class="no-sym has-suf" />
-        <span class="suf">%</span>
+      <label>Interest Rate</label>
+
+      <!-- Toggle -->
+      <div class="rate-toggle">
+        <button class="rtoggle-btn active" id="btn-fixed" onclick="setRateType('fixed')">Fixed Rate</button>
+        <button class="rtoggle-btn" id="btn-floating" onclick="setRateType('floating')">Floating Rate (SOFR)</button>
+      </div>
+
+      <!-- Fixed input -->
+      <div id="fixed-field">
+        <div class="input-wrap">
+          <input type="number" id="interestRate" placeholder="6.5" min="0" step="0.01" class="no-sym has-suf" />
+          <span class="suf">%</span>
+        </div>
+      </div>
+
+      <!-- Floating inputs -->
+      <div class="floating-fields" id="floating-field">
+        <div class="sofr-row">
+          <div class="field" style="gap:0;">
+            <label style="margin-bottom:6px;">1-Month Term SOFR</label>
+            <div class="input-wrap">
+              <input type="number" id="sofr" placeholder="5.30" min="0" step="0.01" class="no-sym has-suf" oninput="updateEffectiveRate()" />
+              <span class="suf">%</span>
+            </div>
+          </div>
+          <div class="field" style="gap:0;">
+            <label style="margin-bottom:6px;">Spread</label>
+            <div class="input-wrap">
+              <input type="number" id="spread" placeholder="2.00" min="0" step="0.01" class="no-sym has-suf" oninput="updateEffectiveRate()" />
+              <span class="suf">%</span>
+            </div>
+          </div>
+        </div>
+        <div class="effective-rate">
+          <span class="er-label">Effective Rate (SOFR + Spread)</span>
+          <span class="er-value" id="effective-rate-display">—</span>
+        </div>
       </div>
     </div>
 
+    <!-- Loan Term -->
     <div class="field">
       <label>Loan Term</label>
       <div class="term-row">
@@ -369,6 +497,7 @@
         </div>
       </div>
     </div>
+
   </div>
 
   <button class="btn btn-primary" onclick="calculate()">Calculate</button>
@@ -402,6 +531,15 @@
         <span class="rl">Total Payments</span>
         <span class="rv" id="r-total">—</span>
       </div>
+    </div>
+
+    <!-- Per Diem -->
+    <div class="perdiem-section">
+      <div class="perdiem-left">
+        <div class="pd-label">Per Diem Interest</div>
+        <div class="pd-sub">Principal × Rate ÷ 360</div>
+      </div>
+      <div class="perdiem-value" id="r-perdiem">—</div>
     </div>
 
     <!-- Bar -->
@@ -448,9 +586,39 @@
 </div>
 
 <script>
-  const fmt = (n) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+  const fmt  = (n) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+  const fmtR = (n) => n.toFixed(4) + '%';
 
-  // Comma formatting for loan amount
+  let rateType = 'fixed';
+
+  // ── Rate type toggle ──
+  function setRateType(type) {
+    rateType = type;
+    document.getElementById('btn-fixed').classList.toggle('active', type === 'fixed');
+    document.getElementById('btn-floating').classList.toggle('active', type === 'floating');
+    document.getElementById('fixed-field').style.display    = type === 'fixed'    ? '' : 'none';
+    document.getElementById('floating-field').classList.toggle('visible', type === 'floating');
+    if (type === 'floating') updateEffectiveRate();
+  }
+
+  function updateEffectiveRate() {
+    const sofr   = parseFloat(document.getElementById('sofr').value)   || 0;
+    const spread = parseFloat(document.getElementById('spread').value) || 0;
+    const eff = sofr + spread;
+    document.getElementById('effective-rate-display').textContent = fmtR(eff);
+  }
+
+  function getAnnualRate() {
+    if (rateType === 'fixed') {
+      return parseFloat(document.getElementById('interestRate').value);
+    } else {
+      const sofr   = parseFloat(document.getElementById('sofr').value)   || 0;
+      const spread = parseFloat(document.getElementById('spread').value) || 0;
+      return sofr + spread;
+    }
+  }
+
+  // ── Comma formatting for loan amount ──
   const loanInput = document.getElementById('loanAmount');
   loanInput.addEventListener('input', () => {
     const raw = loanInput.value.replace(/[^\d]/g, '');
@@ -458,12 +626,13 @@
     loanInput.value = Number(raw).toLocaleString('en-US');
   });
 
+  // ── Main calculation ──
   function calculate() {
-    const P = parseFloat(loanInput.value.replace(/,/g, ''));
-    const annualRate = parseFloat(document.getElementById('interestRate').value);
-    const years  = parseInt(document.getElementById('termYears').value)  || 0;
-    const months = parseInt(document.getElementById('termMonths').value) || 0;
-    const n = years * 12 + months;
+    const P          = parseFloat(loanInput.value.replace(/,/g, ''));
+    const annualRate = getAnnualRate();
+    const years      = parseInt(document.getElementById('termYears').value)  || 0;
+    const months     = parseInt(document.getElementById('termMonths').value) || 0;
+    const n          = years * 12 + months;
 
     if (!P || P <= 0 || isNaN(annualRate) || annualRate < 0 || n <= 0) {
       document.querySelectorAll('.fields input').forEach(el => {
@@ -473,22 +642,24 @@
       return;
     }
 
-    const r = annualRate / 100 / 12;
-    const monthly = r === 0 ? P / n : P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    const r        = annualRate / 100 / 12;
+    const monthly  = r === 0 ? P / n : P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
     const totalPay = monthly * n;
     const totalInt = totalPay - P;
-    const pPct = (P / totalPay * 100).toFixed(1);
-    const iPct = (totalInt / totalPay * 100).toFixed(1);
+    const pPct     = (P / totalPay * 100).toFixed(1);
+    const iPct     = (totalInt / totalPay * 100).toFixed(1);
+    const perDiem  = P * (annualRate / 100) / 360;
 
-    document.getElementById('r-monthly').textContent    = fmt(monthly);
-    document.getElementById('r-yearly').textContent     = fmt(monthly * 12);
+    document.getElementById('r-monthly').textContent     = fmt(monthly);
+    document.getElementById('r-yearly').textContent      = fmt(monthly * 12);
     document.getElementById('r-numPayments').textContent = n.toLocaleString();
-    document.getElementById('r-interest').textContent   = fmt(totalInt);
-    document.getElementById('r-total').textContent      = fmt(totalPay);
-    document.getElementById('bar-p').style.width = pPct + '%';
-    document.getElementById('bar-i').style.width = iPct + '%';
-    document.getElementById('pct-p').textContent = pPct + '%';
-    document.getElementById('pct-i').textContent = iPct + '%';
+    document.getElementById('r-interest').textContent    = fmt(totalInt);
+    document.getElementById('r-total').textContent       = fmt(totalPay);
+    document.getElementById('r-perdiem').textContent     = fmt(perDiem);
+    document.getElementById('bar-p').style.width         = pPct + '%';
+    document.getElementById('bar-i').style.width         = iPct + '%';
+    document.getElementById('pct-p').textContent         = pPct + '%';
+    document.getElementById('pct-i').textContent         = iPct + '%';
 
     // Build amortization table
     const tbody = document.getElementById('amort-body');
@@ -507,26 +678,32 @@
     document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  // ── Reset ──
   function resetForm() {
     loanInput.value = '';
     document.getElementById('interestRate').value = '';
-    document.getElementById('termYears').value = '';
-    document.getElementById('termMonths').value = '';
-    document.getElementById('r-yearly').textContent = '—';
+    document.getElementById('sofr').value         = '';
+    document.getElementById('spread').value       = '';
+    document.getElementById('termYears').value    = '';
+    document.getElementById('termMonths').value   = '';
+    document.getElementById('effective-rate-display').textContent = '—';
+    document.getElementById('r-yearly').textContent  = '—';
+    document.getElementById('r-perdiem').textContent = '—';
     document.getElementById('results').classList.remove('visible');
     document.getElementById('table-wrap').style.display = 'none';
-    document.getElementById('toggle-arrow').className = 'toggle-arrow';
+    document.getElementById('toggle-arrow').className   = 'toggle-arrow';
     document.querySelector('.toggle-btn').childNodes[0].textContent = 'Show Table ';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  // ── Amortization toggle ──
   function toggleTable() {
     const wrap  = document.getElementById('table-wrap');
     const arrow = document.getElementById('toggle-arrow');
     const btn   = document.querySelector('.toggle-btn');
     const isOpen = wrap.style.display === 'block';
     wrap.style.display = isOpen ? 'none' : 'block';
-    arrow.className = 'toggle-arrow' + (isOpen ? '' : ' open');
+    arrow.className    = 'toggle-arrow' + (isOpen ? '' : ' open');
     btn.childNodes[0].textContent = isOpen ? 'Show Table ' : 'Hide Table ';
   }
 
