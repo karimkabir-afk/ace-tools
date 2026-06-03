@@ -430,9 +430,9 @@
       <div class="floating-fields" id="floating-field">
         <div class="sofr-row">
           <div class="field" style="gap:0;">
-            <label style="margin-bottom:6px;">1-Month Term SOFR</label>
+            <label style="margin-bottom:6px;">1-Month Term SOFR <span id="sofr-date" style="font-weight:400;text-transform:none;letter-spacing:0;color:#aaa;font-size:0.72rem;"></span></label>
             <div class="input-wrap">
-              <input type="number" id="sofr" placeholder="5.30" min="0" step="0.01" class="no-sym has-suf" oninput="updateEffectiveRate()" />
+              <input type="number" id="sofr" placeholder="—" min="0" step="0.01" class="no-sym has-suf" oninput="updateEffectiveRate()" />
               <span class="suf">%</span>
             </div>
           </div>
@@ -549,6 +549,23 @@
   const fmtR = (n) => n.toFixed(4) + '%';
 
   let rateType = 'fixed';
+
+  // ── Auto-load SOFR rate on page open ──
+  async function loadSofr() {
+    try {
+      const res  = await fetch('sofr.json');
+      if (!res.ok) throw new Error('sofr.json not found');
+      const data = await res.json();
+      if (data.sofr != null) {
+        document.getElementById('sofr').value = data.sofr;
+        document.getElementById('sofr-date').textContent = data.date ? `(as of ${data.date})` : '';
+        updateEffectiveRate();
+      }
+    } catch (e) {
+      // Silently fail — user can type the rate manually
+    }
+  }
+  loadSofr();
 
   // ── Rate type toggle ──
   function setRateType(type) {
