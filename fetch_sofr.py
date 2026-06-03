@@ -14,13 +14,19 @@ def fetch_from_fred(api_key):
         f"&api_key={api_key}"
         f"&file_type=json"
         f"&sort_order=desc"
-        f"&limit=1"
+        f"&limit=5"          # fetch last 5 to skip any missing/null entries
     )
     resp = requests.get(url, timeout=15)
     resp.raise_for_status()
     data = resp.json()
-    obs  = data["observations"][0]
-    return float(obs["value"]), obs["date"]
+    # Use the most recent observation with a valid numeric value
+    for obs in data["observations"]:
+        try:
+            value = float(obs["value"])
+            return value, obs["date"]
+        except (ValueError, TypeError):
+            continue
+    raise ValueError("No valid observations returned from FRED")
 
 def load_existing():
     try:
