@@ -252,11 +252,11 @@ svg{width:100%;display:block;overflow:visible}
   <div class="seg" id="dateRange">
     <button class="on" data-d="yesterday">Yesterday</button>
     <button data-d="wtd">WTD</button>
-    <button data-d="ptd">YTD</button>
     <button data-d="last7">Last 7</button>
     <button data-d="trailing4w">Trailing 4W</button>
     <button data-d="period">Period</button>
     <button data-d="periodweek">Period Wk</button>
+    <button data-d="ptd">YTD</button>
     <button data-d="custom">Custom</button>
   </div>
 
@@ -290,6 +290,7 @@ svg{width:100%;display:block;overflow:visible}
   <div class="seg" id="trendMode">
     <button class="on" data-t="daily">Daily</button>
     <button data-t="weekly">Weekly</button>
+    <button data-t="period">Period</button>
     <button data-t="weekday">Weekday</button>
   </div>
 
@@ -660,6 +661,26 @@ function initDashboard() {
       };
     }
 
+    if(mode==='period') {
+      const map={};
+      rows.forEach(r=>{
+        const py=derivePY(r), pn=r.pn; if(!py||!pn) return;
+        const k=`${py}-P${String(pn).padStart(2,'0')}`;
+        if(!map[k]) map[k]={sales:0,cnt:0,label:`P${pn}`};
+        map[k].sales+=r.sales; map[k].cnt+=r.cnt;
+      });
+      const keys=Object.keys(map).sort();
+      return {
+        labels: keys.map(k=>map[k].label),
+        rawKeys: keys.map(k=>map[k].label),
+        values: keys.map(k=>{
+          const m=map[k];
+          return metric==='avgcheck'?(m.cnt?m.sales/m.cnt:0):(metric==='sales'?m.sales:m.cnt);
+        }),
+        isBar: true,
+      };
+    }
+
     if(mode==='weekday') {
       const DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
       const agg=DOW.map(()=>({sales:0,cnt:0,days:0}));
@@ -748,7 +769,7 @@ function initDashboard() {
       labels.forEach((lab,i)=>{ if(i%step===0||i===n-1) xlabs+=`<text class="ax" x="${xs(i).toFixed(1)}" y="${H-8}" text-anchor="middle">${lab}</text>`; });
     }
 
-    const modeLab = S.trendMode==='weekday'?'Avg by Weekday':S.trendMode==='weekly'?'Weekly':'Daily';
+    const modeLab = S.trendMode==='weekday'?'Avg by Weekday':S.trendMode==='weekly'?'Weekly':S.trendMode==='period'?'By Period':'Daily';
 
     CHART = {labels,values,rawKeys,W,H,padL,padR,padT,padB,mx,isBar,metric};
 
@@ -812,7 +833,7 @@ function initDashboard() {
     if(!td||!td.labels.length) return '';
     const {labels, values, rawKeys} = td;
     const metric = S.metric;
-    const modeLab = S.trendMode==='weekday'?'Avg by Weekday':S.trendMode==='weekly'?'Weekly':'Daily';
+    const modeLab = S.trendMode==='weekday'?'Avg by Weekday':S.trendMode==='weekly'?'Weekly':S.trendMode==='period'?'By Period':'Daily';
     let h=`<div class="ttable"><div class="pl-h"><h3>${METRIC_LABEL_FULL[metric]} · ${modeLab}</h3><span class="tag">${labels.length} rows</span></div>`;
     for(let i=labels.length-1;i>=0;i--) {
       h+=`<div class="trow"><span class="trow-dt">${labels[i]}</span><span class="trow-val">${fmtHero(values[i],metric)}</span></div>`;
