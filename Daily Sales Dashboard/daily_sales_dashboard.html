@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ACE Brands · Daily Sales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e1410;--bg2:#131b16;--card:#18221c;--card2:#1e2a23;
+  --line:#26342b;--line2:#324239;
+  --ink:#eef3ee;--mut:#8fa394;--mut2:#5f7065;
+  --gold:#d4a23a;--gold2:#e8bd5a;
+  --grn:#5fcf80;--red:#e8736b;
+  --r:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:'Spline Sans',sans-serif;-webkit-font-smoothing:antialiased}
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(120% 60% at 100% 0%,rgba(212,162,58,.06),transparent 60%),
+    radial-gradient(90% 50% at 0% 100%,rgba(95,207,128,.04),transparent 55%),
+    var(--bg);
+}
+.shell{max-width:560px;margin:0 auto;min-height:100vh;padding-bottom:40px}
+.num{font-family:'Spline Sans Mono',monospace;font-variant-numeric:tabular-nums}
+
+/* Loading */
+#loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);z-index:9999;flex-direction:column;gap:16px}
+.spinner{width:32px;height:32px;border:2.5px solid var(--line2);border-top-color:var(--gold);
+  border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-brand{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--ink)}
+.load-txt{font-size:12.5px;color:var(--mut);font-family:'Spline Sans Mono',monospace}
+
+/* Header */
+header{padding:22px 18px 14px;position:sticky;top:0;z-index:50;
+  background:linear-gradient(180deg,var(--bg) 70%,rgba(14,20,16,0));
+  backdrop-filter:blur(2px)}
+.brand{display:flex;align-items:center;gap:10px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(212,162,58,.15)}
+.brand h1{font-family:'Fraunces',serif;font-weight:600;font-size:19px;letter-spacing:-.01em}
+.brand .sub{font-size:11px;color:var(--mut2);font-family:'Spline Sans Mono',monospace;
+  margin-left:auto;text-transform:uppercase;letter-spacing:.08em}
+.tagline{color:var(--mut);font-size:12.5px;margin-top:5px}
+
+/* Filter panel */
+.panel{margin:14px 14px 0;background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px 16px 18px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.flabel{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut2);
+  font-family:'Spline Sans Mono',monospace;margin:14px 2px 8px;display:block}
+.flabel:first-child{margin-top:2px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1 1 auto;min-width:fit-content;border:1px solid var(--line2);background:var(--bg2);
+  color:var(--mut);padding:9px 10px;border-radius:10px;font-size:12.5px;font-weight:500;
+  cursor:pointer;transition:.15s;font-family:inherit}
+.seg button:active{transform:scale(.97)}
+.seg button.on{background:var(--card2);color:var(--ink);border-color:var(--gold);
+  box-shadow:inset 0 0 0 1px rgba(212,162,58,.3)}
+select{width:100%;background:var(--bg2);color:var(--ink);border:1px solid var(--line2);
+  border-radius:10px;padding:11px 12px;font-size:13.5px;font-family:inherit;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%238fa394' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center}
+.date-inp{width:100%;background:var(--bg2);color:var(--ink);border:1px solid var(--line2);
+  border-radius:10px;padding:11px 12px;font-size:13px;font-family:'Spline Sans Mono',monospace;
+  color-scheme:dark}
+.date-inp:focus{outline:none;border-color:var(--gold)}
+.range-row{display:flex;gap:8px;align-items:center}
+.range-row select,.range-row .date-inp{flex:1}
+.range-row span{color:var(--mut2);font-size:12px;white-space:nowrap}
+
+/* Results */
+.results{padding:18px 14px 0}
+.rhead{display:flex;align-items:baseline;justify-content:space-between;margin:6px 4px 14px;flex-wrap:wrap;gap:8px}
+.rtitle{font-family:'Fraunces',serif;font-size:21px;font-weight:600;letter-spacing:-.01em;line-height:1.1}
+.rscope{font-size:11px;color:var(--gold2);font-family:'Spline Sans Mono',monospace;margin-top:4px;
+  text-transform:uppercase;letter-spacing:.06em}
+.rmeta{font-size:11px;color:var(--mut2);text-align:right;font-family:'Spline Sans Mono',monospace;
+  flex:0 0 auto;line-height:1.6}
+
+/* Hero */
+.hero{background:linear-gradient(135deg,var(--card2),var(--card));border:1px solid var(--line);
+  border-radius:var(--r);padding:18px;margin-bottom:12px;position:relative;overflow:hidden}
+.hero:before{content:"";position:absolute;right:-30px;top:-30px;width:120px;height:120px;
+  background:radial-gradient(circle,rgba(212,162,58,.12),transparent 70%);border-radius:50%}
+.hero .lab{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.1em;
+  font-family:'Spline Sans Mono',monospace}
+.hero .val{font-family:'Fraunces',serif;font-size:36px;font-weight:600;margin-top:6px;letter-spacing:-.02em}
+.hero .sub-val{font-size:12.5px;color:var(--mut);font-family:'Spline Sans Mono',monospace;margin-top:6px}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 14px}
+.kpi .lab{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em;
+  font-family:'Spline Sans Mono',monospace}
+.kpi .v{font-size:18px;font-weight:600;margin-top:5px;font-family:'Spline Sans Mono',monospace}
+
+/* Chart */
+.chart{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.chart-head h3{margin:0;font-size:13px;font-weight:600;letter-spacing:.01em}
+.chart-sub{font-size:10.5px;color:var(--mut2);font-family:'Spline Sans Mono',monospace}
+.chart-readout{min-height:0;height:0;overflow:hidden;opacity:0;transition:.15s;
+  display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;font-size:12px}
+.chart-readout.show{height:auto;min-height:22px;opacity:1;margin-bottom:6px}
+.ro-period{font-family:'Spline Sans Mono',monospace;font-size:11px;color:var(--gold2);
+  background:rgba(212,162,58,.12);padding:2px 8px;border-radius:6px;font-weight:600}
+.ro-row{display:inline-flex;align-items:center;gap:5px;color:var(--mut);font-size:12px}
+.ro-row b{color:var(--ink);font-family:'Spline Sans Mono',monospace;font-weight:600}
+.svgwrap{touch-action:pan-y}
+.scrub-hint{font-size:10px;color:var(--mut2);font-family:'Spline Sans Mono',monospace;
+  text-align:center;margin-top:8px;opacity:.6}
+svg{width:100%;display:block;overflow:visible}
+.ax{fill:var(--mut2);font-size:9px;font-family:'Spline Sans Mono',monospace}
+
+/* Multi-select dropdown */
+.msd-wrap{position:relative}
+.msd-btn{width:100%;background:var(--bg2);color:var(--ink);border:1px solid var(--line2);
+  border-radius:10px;padding:11px 12px;font-size:13.5px;font-family:inherit;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;text-align:left}
+.msd-btn:focus{outline:none;border-color:var(--gold)}
+.msd-btn span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut)}
+.msd-btn.has-sel span{color:var(--ink)}
+.msd-list{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:200;
+  background:var(--card2);border:1px solid var(--line2);border-radius:10px;
+  max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.msd-list.open{display:block}
+.msd-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;
+  font-size:13px;border-bottom:1px solid var(--line);transition:.12s}
+.msd-item:last-child{border-bottom:none}
+.msd-item:hover{background:var(--card)}
+.msd-item input[type=checkbox]{accent-color:var(--gold);width:15px;height:15px;cursor:pointer}
+
+/* Chips (custom store set) */
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+.chip{border:1px solid var(--line2);background:var(--bg2);color:var(--mut);
+  padding:7px 11px;border-radius:999px;font-size:12px;font-weight:500;cursor:pointer;
+  transition:.14s;font-family:inherit;display:flex;align-items:center;gap:6px}
+.chip:active{transform:scale(.95)}
+.chip .cdot{width:7px;height:7px;border-radius:50%;background:var(--line2);transition:.14s}
+.chip.on{background:var(--card2);color:var(--ink);border-color:var(--gold)}
+.chip.on .cdot{background:var(--gold)}
+.chip-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip-actions button{border:1px solid var(--line);background:transparent;color:var(--mut2);
+  padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer;
+  font-family:'Spline Sans Mono',monospace;transition:.14s}
+.chip-actions button:active{transform:scale(.95);color:var(--ink)}
+
+/* Store list */
+.slist{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:14px}
+.pl-h{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.pl-h h3{font-size:13px;font-weight:600;letter-spacing:.02em}
+.pl-h .tag{font-size:10px;color:var(--mut2);font-family:'Spline Sans Mono',monospace}
+.srow{display:grid;grid-template-columns:auto 1fr auto;gap:10px;padding:11px 14px;
+  align-items:center;border-bottom:1px solid rgba(38,52,43,.5)}
+.srow:last-child{border-bottom:none}
+.srank{font-family:'Spline Sans Mono',monospace;font-size:11px;color:var(--mut2);width:18px}
+.sname{font-size:13px;font-weight:500}
+.stype{font-size:10px;color:var(--mut2);font-family:'Spline Sans Mono',monospace}
+.sbar{height:3px;border-radius:2px;background:var(--gold);margin-top:4px;opacity:.45}
+.sval{font-family:'Spline Sans Mono',monospace;font-size:13px;text-align:right}
+
+/* Trend table */
+.ttable{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:14px}
+.ttable .pl-h{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.trow{display:grid;grid-template-columns:1fr auto;gap:10px;padding:9px 16px;
+  align-items:center;border-bottom:1px solid rgba(38,52,43,.5);font-size:12.5px}
+.trow:last-child{border-bottom:none}
+.trow-dt{color:var(--mut);font-family:'Spline Sans Mono',monospace;font-size:11.5px}
+.trow-val{font-family:'Spline Sans Mono',monospace;font-size:12.5px;text-align:right}
+
+.empty{text-align:center;padding:40px 20px;color:var(--mut2);font-size:13px;line-height:1.6}
+.fade{animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* Desktop */
+@media(min-width:900px){
+  .shell{max-width:1240px;display:grid;grid-template-columns:360px 1fr;gap:28px;
+    padding:0 32px 48px;align-items:start}
+  .controls{position:sticky;top:0;align-self:start;max-height:100vh;overflow-y:auto;
+    padding:24px 4px 24px 0;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+  .controls::-webkit-scrollbar{width:6px}
+  .controls::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+  header{position:static;padding:8px 4px 4px;background:none;backdrop-filter:none}
+  .brand h1{font-size:22px}
+  .panel{margin:14px 0 0;box-shadow:none;background:var(--card);border:1px solid var(--line)}
+  .main{padding-top:24px;min-width:0}
+  .results{padding:0}
+  .rtitle{font-size:26px}
+  .rhead{margin:2px 2px 18px}
+  .hero{padding:24px 26px}
+  .hero .val{font-size:44px}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+  .chart svg{max-height:300px}
+}
+@media(min-width:1240px){.shell{grid-template-columns:390px 1fr}}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="load-brand">ACE Brands</div>
+  <div class="spinner"></div>
+  <div class="load-txt">Loading sales data…</div>
+</div>
+
+<div class="shell" id="shell" style="display:none">
+<aside class="controls">
+<header>
+  <div class="brand">
+    <span class="dot"></span>
+    <h1>ACE Brands</h1>
+    <span class="sub">Daily Sales</span>
+  </div>
+  <div class="tagline" id="tagline">Daily Sales Dashboard</div>
+</header>
+
+<div class="panel">
+  <span class="flabel">Scope</span>
+  <div class="seg" id="scope">
+    <button class="on" data-s="all">Portfolio</button>
+    <button data-s="legacy">Legacy</button>
+    <button data-s="kevin">Kevin</button>
+    <button data-s="dev">Dev</button>
+    <button data-s="carrols">Carrols</button>
+    <button data-s="store">Single store</button>
+    <button data-s="custom">Custom set</button>
+  </div>
+
+  <div id="storeWrap" style="display:none;margin-top:10px">
+    <select id="storeSel"></select>
+  </div>
+
+  <div id="customScopeWrap" style="display:none;margin-top:10px">
+    <span class="flabel" style="margin-top:6px">Pick stores <span id="custCount" style="color:var(--gold2)"></span></span>
+    <div class="chips" id="custChips"></div>
+    <div class="chip-actions">
+      <button id="caAll">All</button>
+      <button id="caNone">Clear</button>
+      <button id="caLegacy">+Legacy</button>
+      <button id="caKevin">+Kevin</button>
+      <button id="caDev">+Dev</button>
+      <button id="caCarrols">+Carrols</button>
+    </div>
+  </div>
+
+  <span class="flabel">Date Range</span>
+  <div class="seg" id="dateRange">
+    <button class="on" data-d="yesterday">Yesterday</button>
+    <button data-d="wtd">WTD</button>
+    <button data-d="ptd">YTD</button>
+    <button data-d="last7">Last 7</button>
+    <button data-d="trailing4w">Trailing 4W</button>
+    <button data-d="period">Period</button>
+    <button data-d="periodweek">Period Wk</button>
+    <button data-d="custom">Custom</button>
+  </div>
+
+  <!-- Period sub-UI -->
+  <div id="periodWrap" style="display:none;margin-top:10px">
+    <div class="chips" id="periodChips"></div>
+  </div>
+
+  <!-- Period Week sub-UI -->
+  <div id="periodWeekWrap" style="display:none;margin-top:10px">
+    <div class="chips" id="pwChips"></div>
+  </div>
+
+  <!-- Custom sub-UI -->
+  <div id="customWrap" style="display:none;margin-top:10px">
+    <div class="range-row">
+      <input type="date" id="custStart" class="date-inp" inputmode="none">
+      <span>→</span>
+      <input type="date" id="custEnd" class="date-inp" inputmode="none">
+    </div>
+  </div>
+
+  <span class="flabel">Metric</span>
+  <div class="seg" id="metric">
+    <button class="on" data-m="sales">Net Sales</button>
+    <button data-m="count">Transactions</button>
+    <button data-m="avgcheck">Avg Check</button>
+  </div>
+
+  <span class="flabel">Trend Mode</span>
+  <div class="seg" id="trendMode">
+    <button class="on" data-t="daily">Daily</button>
+    <button data-t="weekly">Weekly</button>
+    <button data-t="weekday">Weekday</button>
+  </div>
+
+  <!-- Day filter — only shown in Daily mode -->
+  <div id="dowWrap" style="display:none;margin-top:10px">
+    <div class="chips" id="dowChips"></div>
+  </div>
+</div>
+</aside>
+
+<main class="main">
+  <div class="results" id="results"></div>
+</main>
+</div>
+
+<script>
+/* ── Replace this URL with your deployed Apps Script URL ──────────────────── */
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbxodxx9DHMd753fiJwMQKtSzDJCrjJ9hQ3dIxjtCaR_3PYwORxEpXCSsxnK1o6qdcwGXw/exec';
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+(async () => {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30000);
+    let resp;
+    try {
+      resp = await fetch(APPS_URL, {redirect:'follow', signal: controller.signal});
+    } catch(fetchErr) {
+      clearTimeout(timer);
+      throw new Error(fetchErr.name === 'AbortError'
+        ? 'Request timed out after 30s — Apps Script may be overloaded or the deployment URL has changed.'
+        : fetchErr.message);
+    }
+    clearTimeout(timer);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const json = await resp.json();
+    if (!json.ok || !Array.isArray(json.data)) throw new Error('Bad response from Apps Script');
+    window.RAW = json.data;
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('shell').style.display = '';
+    initDashboard();
+  } catch(e) {
+    document.getElementById('loading').innerHTML =
+      `<div style="text-align:center;padding:32px;max-width:320px">
+        <div style="font-size:28px;margin-bottom:14px">⚠</div>
+        <div style="color:#eef3ee;font-size:15px;font-weight:600;margin-bottom:8px">Could not load data</div>
+        <div style="color:#8fa394;font-size:12px;font-family:monospace;margin-bottom:16px">${e.message}</div>
+        <div style="color:#5f7065;font-size:11.5px;line-height:1.7">Make sure the Apps Script URL is deployed and the sheet is accessible.</div>
+      </div>`;
+  }
+})();
+
+function initDashboard() {
+  const RAW = window.RAW;
+
+  /* ── Helpers ─────────────────────────────────────────────────────────── */
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function parseDate(s) {
+    const [y,m,d] = s.split('-').map(Number);
+    return new Date(y, m-1, d);
+  }
+  function toDateStr(d) {
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  function fmtDate(d)  { return MONTHS[d.getMonth()]+' '+d.getDate(); }
+  function fmtDS(s)    { return fmtDate(parseDate(s)); }
+
+  const dollar = n => {
+    const s=n<0?'-$':'$'; return s+Math.abs(Math.round(n)).toLocaleString();
+  };
+  const abbr = n => {
+    const s=n<0?'-$':'$'; const a=Math.abs(n);
+    if(a>=999500) return s+(a/1e6).toFixed(a>=1e7?0:1)+'M';
+    if(a>=1e3)    return s+(a/1e3).toFixed(1).replace(/\.0$/,'')+'K';
+    return s+Math.round(a);
+  };
+
+  const METRIC_LABEL = {sales:'Net Sales', count:'Transactions', avgcheck:'Avg Check'};
+  const METRIC_LABEL_FULL = {sales:'Net Sales', count:'Transactions', avgcheck:'Average Check'};
+
+  function fmtHero(v, m) {
+    if(m==='sales')    return dollar(v);
+    if(m==='count')    return Math.round(v).toLocaleString();
+    if(m==='avgcheck') return '$'+v.toFixed(2);
+  }
+  function fmtChart(v, m) {
+    if(m==='sales')    return abbr(v);
+    if(m==='count')    return Math.round(v).toLocaleString();
+    if(m==='avgcheck') return '$'+v.toFixed(2);
+  }
+
+  /* ── Build period + week catalogs ────────────────────────────────────── */
+  // Derive fiscal year from date when py is missing: P1 starting in Dec uses next calendar year
+  function derivePY(r) {
+    if(r.py) return r.py;
+    if(!r.dt) return null;
+    const yr = parseInt(r.dt.slice(0,4));
+    const mo = parseInt(r.dt.slice(5,7));
+    // If pn=1 and month is Nov/Dec, fiscal year = calendar year + 1
+    if(r.pn===1 && mo>=11) return yr+1;
+    return yr;
+  }
+
+  const PERIODS = [];
+  { const seen=new Set();
+    RAW.forEach(r=>{
+      const py=derivePY(r), pn=r.pn;
+      const k=`${py}-${pn}`;
+      if(!seen.has(k)&&py&&pn){ seen.add(k); PERIODS.push({py,pn}); }
+    });
+    PERIODS.sort((a,b)=>a.py!==b.py?a.py-b.py:a.pn-b.pn);
+  }
+
+  const PERIOD_WEEKS = [];
+  { const seen=new Set();
+    RAW.forEach(r=>{
+      const py=derivePY(r), pn=r.pn, pw=r.wn; // use wn (week# within period) — pw col is 0 in sheet
+      const k=`${py}-${pn}-${pw}`;
+      if(!seen.has(k)&&py&&pn&&pw){ seen.add(k); PERIOD_WEEKS.push({py,pn,pw}); }
+    });
+    PERIOD_WEEKS.sort((a,b)=>a.py!==b.py?a.py-b.py:a.pn!==b.pn?a.pn-b.pn:a.pw-b.pw);
+  }
+
+  /* ── Store metadata ──────────────────────────────────────────────────── */
+  const STORE_TYPES = [...new Set(RAW.map(r=>r.st).filter(Boolean))];
+  const LEGACY_TYPE  = STORE_TYPES.find(t=>t.toLowerCase().includes('legacy'))  ||'Legacy Stores';
+  const KEVIN_TYPE   = STORE_TYPES.find(t=>t.toLowerCase().includes('kevin'))   ||'Kevin Acquisition';
+  const DEV_TYPE     = STORE_TYPES.find(t=>t.toLowerCase().includes('develop')) ||'Development';
+  const CARROLS_TYPE = STORE_TYPES.find(t=>t.toLowerCase().includes('carrols')) ||'Carrols Acquisition';
+
+  // Build store list: unique store names with their type
+  const STORES = [];
+  { const seen=new Set();
+    RAW.forEach(r=>{ if(r.sn&&!seen.has(r.sn)){ seen.add(r.sn); STORES.push({name:r.sn,st:r.st}); } });
+    STORES.sort((a,b)=>a.name.localeCompare(b.name));
+  }
+  const STORE_NAMES = STORES.map(s=>s.name);
+  document.getElementById('tagline').textContent = `${STORE_NAMES.length}-store portfolio · live data`;
+
+  /* ── "Current" period = period of most recent row ────────────────────── */
+  const latestRow = RAW.reduce((best,r)=>!best||r.dt>best.dt?r:best, null);
+  const curPY = latestRow?derivePY(latestRow):2026;
+  const curPN = latestRow?latestRow.pn:1;
+
+  /* ── Reference dates ─────────────────────────────────────────────────── */
+  const today = new Date(); today.setHours(0,0,0,0);
+  const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
+  const yStr = toDateStr(yesterday);
+
+  /* ── State ───────────────────────────────────────────────────────────── */
+  const latestP  = PERIODS[PERIODS.length-1]||{py:2026,pn:1};
+  const latestPW = PERIOD_WEEKS[PERIOD_WEEKS.length-1]||{py:2026,pn:1,pw:1};
+
+  const S = {
+    scope:        'all',
+    selStore:     STORES[0]?STORES[0].name:'',
+    customStores: new Set(),
+    dateRange:    'yesterday',
+    selPY:        latestP.py,
+    selPNs:       new Set([latestP.pn]),
+    selPWY:       latestPW.py,
+    selPWMap:     new Map([[latestPW.pn, new Set([latestPW.pw])]]),
+    custStart:    yStr,
+    custEnd:      yStr,
+    metric:       'sales',
+    trendMode:    'daily',
+    dow:          null, // null=all days, 0=Mon…6=Sun
+  };
+
+  /* ── Populate selects ────────────────────────────────────────────────── */
+  const $$ = id => document.getElementById(id);
+
+  function fillOpts(el, items, curVal) {
+    el.innerHTML = items.map(x=>`<option value="${x.v}">${x.l}</option>`).join('');
+    el.value = curVal;
+  }
+
+  // Store selector
+  fillOpts($$('storeSel'), STORES.map(s=>({v:s.name,l:s.name})), S.selStore);
+
+  // Custom store chips
+  function buildChips() {
+    $$('custChips').innerHTML = STORES.map(s=>
+      `<button class="chip" data-n="${s.name}"><span class="cdot"></span>${s.name}</button>`).join('');
+  }
+  buildChips();
+  function refreshChips() {
+    [...$$('custChips').children].forEach(c=>c.classList.toggle('on',S.customStores.has(c.dataset.n)));
+    $$('custCount').textContent = S.customStores.size?`(${S.customStores.size})`:'';
+  }
+  $$('custChips').addEventListener('click',e=>{
+    const c=e.target.closest('.chip'); if(!c)return;
+    const n=c.dataset.n;
+    S.customStores.has(n)?S.customStores.delete(n):S.customStores.add(n);
+    refreshChips(); render();
+  });
+  const addType=t=>{ STORES.filter(s=>s.st===t).forEach(s=>S.customStores.add(s.name)); refreshChips(); render(); };
+  $$('caAll').onclick=()=>{ STORES.forEach(s=>S.customStores.add(s.name)); refreshChips(); render(); };
+  $$('caNone').onclick=()=>{ S.customStores.clear(); refreshChips(); render(); };
+  $$('caLegacy').onclick=()=>addType(LEGACY_TYPE);
+  $$('caKevin').onclick=()=>addType(KEVIN_TYPE);
+  $$('caDev').onclick=()=>addType(DEV_TYPE);
+  $$('caCarrols').onclick=()=>addType(CARROLS_TYPE);
+
+  // Period multi-select chips
+  function buildPeriodChips() {
+    $$('periodChips').innerHTML = PERIODS.map(p =>
+      `<button class="chip${S.selPNs.has(p.pn)?' on':''}" data-pn="${p.pn}">
+        <span class="cdot"></span>P${p.pn} ${p.py}
+      </button>`
+    ).join('');
+  }
+  buildPeriodChips();
+  $$('periodChips').addEventListener('click', e => {
+    const btn = e.target.closest('.chip'); if (!btn) return;
+    const pn = +btn.dataset.pn;
+    if (S.selPNs.has(pn)) { if (S.selPNs.size > 1) S.selPNs.delete(pn); }
+    else S.selPNs.add(pn);
+    buildPeriodChips(); render();
+  });
+
+  // Period Week multi-select chips — flat PxWy list
+  function buildPWChips() {
+    $$('pwChips').innerHTML = PERIOD_WEEKS.map(pw => {
+      const on = S.selPWMap.has(pw.pn) && S.selPWMap.get(pw.pn).has(pw.pw);
+      return `<button class="chip${on?' on':''}" data-pn="${pw.pn}" data-ww="${pw.pw}">
+        <span class="cdot"></span>P${pw.pn}W${pw.pw}
+      </button>`;
+    }).join('');
+  }
+  buildPWChips();
+  $$('pwChips').addEventListener('click', e => {
+    const btn = e.target.closest('.chip'); if (!btn) return;
+    const pn = +btn.dataset.pn, ww = +btn.dataset.ww;
+    if (!S.selPWMap.has(pn)) S.selPWMap.set(pn, new Set());
+    const ws = S.selPWMap.get(pn);
+    if (ws.has(ww)) {
+      ws.delete(ww);
+      if (!ws.size) S.selPWMap.delete(pn);
+      if (!S.selPWMap.size) { S.selPWMap.set(pn, new Set([ww])); } // keep ≥1
+    } else {
+      ws.add(ww);
+    }
+    buildPWChips(); render();
+  });
+
+  $$('custStart').value = S.custStart;
+  $$('custEnd').value   = S.custEnd;
+
+  /* ── Date range computation ──────────────────────────────────────────── */
+  function getDateRange() {
+    const dr = S.dateRange;
+
+    if(dr==='yesterday') {
+      return {start:yStr, end:yStr, label:'Yesterday · '+fmtDate(yesterday)};
+    }
+    if(dr==='wtd') {
+      const mon = new Date(today);
+      mon.setDate(today.getDate()-((today.getDay()+6)%7));
+      const monStr = toDateStr(mon);
+      if(monStr>yStr) return {start:yStr,end:yStr,label:'WTD · Week just started'};
+      return {start:monStr, end:yStr, label:'WTD · '+fmtDate(mon)+' – '+fmtDate(yesterday)};
+    }
+    if(dr==='ptd') {
+      const s = `${curPY}-01-01`;
+      return {start:s, end:yStr, label:`YTD · ${curPY}`+'\n'+fmtDS(s)+' – '+fmtDate(yesterday)};
+    }
+    if(dr==='last7') {
+      const s=new Date(yesterday); s.setDate(yesterday.getDate()-6);
+      return {start:toDateStr(s), end:yStr, label:'Last 7 Days\n'+fmtDate(s)+' – '+fmtDate(yesterday)};
+    }
+    if(dr==='trailing4w') {
+      const s=new Date(yesterday); s.setDate(yesterday.getDate()-27);
+      return {start:toDateStr(s), end:yStr, label:'Trailing 4W\n'+fmtDate(s)+' – '+fmtDate(yesterday)};
+    }
+    if(dr==='period') {
+      const rows=RAW.filter(r=>derivePY(r)===S.selPY&&S.selPNs.has(r.pn)).map(r=>r.dt).sort();
+      const label=[...S.selPNs].sort((a,b)=>a-b).map(p=>`P${p}`).join('+') + ` ${S.selPY}`;
+      if(!rows.length) return {start:yStr,end:yStr,label};
+      return {start:rows[0], end:rows[rows.length-1], label};
+    }
+    if(dr==='periodweek') {
+      const rows=RAW.filter(r=>{
+        const wSet=S.selPWMap.get(r.pn);
+        return wSet&&wSet.has(r.wn);
+      }).map(r=>r.dt).sort();
+      const parts=[...S.selPWMap.entries()].sort((a,b)=>a[0]-b[0])
+        .map(([pn,ws])=>`P${pn}W${[...ws].sort((a,b)=>a-b).join('/')}`).join(' ');
+      const label=`${parts} ${S.selPWY}`;
+      if(!rows.length) return {start:yStr,end:yStr,label};
+      return {start:rows[0], end:rows[rows.length-1], label};
+    }
+    if(dr==='custom') {
+      const s=S.custStart, e=S.custEnd;
+      if(!s||!e) return {start:yStr,end:yStr,label:'Custom'};
+      return {start:s, end:e, label:fmtDS(s)+(s===e?'':' – '+fmtDS(e))};
+    }
+    return {start:yStr,end:yStr,label:'Yesterday'};
+  }
+
+  /* ── Row filtering ───────────────────────────────────────────────────── */
+  function filterRows(start, end) {
+    return RAW.filter(r => {
+      if(r.dt < start || r.dt > end) return false;
+      if(S.scope==='all')     return true;
+      if(S.scope==='legacy')  return r.st===LEGACY_TYPE;
+      if(S.scope==='kevin')   return r.st===KEVIN_TYPE;
+      if(S.scope==='dev')     return r.st===DEV_TYPE;
+      if(S.scope==='carrols') return r.st===CARROLS_TYPE;
+      if(S.scope==='store')   return r.sn===S.selStore;
+      if(S.scope==='custom')  return S.customStores.has(r.sn);
+      return true;
+    });
+  }
+
+  /* ── Aggregation ─────────────────────────────────────────────────────── */
+  function aggTotal(rows) {
+    const sales = rows.reduce((s,r)=>s+r.sales,0);
+    const count = rows.reduce((s,r)=>s+r.cnt,0);
+    return {sales, count, avgcheck: count ? sales/count : 0};
+  }
+
+  function metricVal(agg, metric) {
+    return agg[metric];
+  }
+
+  /* ── Trend data ──────────────────────────────────────────────────────── */
+  function getTrendData(rows) {
+    const metric = S.metric;
+    const mode   = S.trendMode;
+
+    if(mode==='daily') {
+      const map={};
+      rows.forEach(r=>{
+        if(S.dow!==null && (parseDate(r.dt).getDay()+6)%7!==S.dow) return;
+        if(!map[r.dt]) map[r.dt]={sales:0,cnt:0};
+        map[r.dt].sales+=r.sales; map[r.dt].cnt+=r.cnt;
+      });
+      const keys=Object.keys(map).sort();
+      return {
+        labels: keys.map(fmtDS),
+        rawKeys: keys,
+        values: keys.map(k=>{
+          const m=map[k];
+          return metric==='avgcheck'?(m.cnt?m.sales/m.cnt:0):(metric==='sales'?m.sales:m.cnt);
+        }),
+        isBar: false,
+      };
+    }
+
+    if(mode==='weekly') {
+      const map={};
+      rows.forEach(r=>{
+        const k=`${derivePY(r)}-P${String(r.pn||0).padStart(2,'0')}-W${String(r.wn||0).padStart(2,'0')}`;
+        if(!map[k]) map[k]={sales:0,cnt:0,label:`P${r.pn}W${r.wn}`};
+        map[k].sales+=r.sales; map[k].cnt+=r.cnt;
+      });
+      const keys=Object.keys(map).sort();
+      return {
+        labels: keys.map(k=>map[k].label),
+        rawKeys: keys.map(k=>map[k].label),
+        values: keys.map(k=>{
+          const m=map[k];
+          return metric==='avgcheck'?(m.cnt?m.sales/m.cnt:0):(metric==='sales'?m.sales:m.cnt);
+        }),
+        isBar: true,
+      };
+    }
+
+    if(mode==='weekday') {
+      const DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      const agg=DOW.map(()=>({sales:0,cnt:0,days:0}));
+      // aggregate per date first (multiple store rows per date)
+      const dateMap={};
+      rows.forEach(r=>{
+        if(!dateMap[r.dt]) dateMap[r.dt]={sales:0,cnt:0};
+        dateMap[r.dt].sales+=r.sales; dateMap[r.dt].cnt+=r.cnt;
+      });
+      Object.entries(dateMap).forEach(([dt,m])=>{
+        const dow=(parseDate(dt).getDay()+6)%7; // 0=Mon,6=Sun
+        agg[dow].sales+=m.sales; agg[dow].cnt+=m.cnt; agg[dow].days++;
+      });
+      return {
+        labels: DOW,
+        rawKeys: DOW,
+        values: DOW.map((_,i)=>{
+          const m=agg[i];
+          if(!m.days) return 0;
+          if(metric==='avgcheck') return m.cnt?m.sales/m.cnt:0;
+          return (metric==='sales'?m.sales:m.cnt)/m.days; // avg per weekday occurrence
+        }),
+        isBar: true,
+        dayTotals: agg, // for tooltip context
+      };
+    }
+  }
+
+  /* ── Trend chart SVG ─────────────────────────────────────────────────── */
+  let CHART = null;
+
+  function renderChart(rows) {
+    if(!rows.length) return '';
+    const td = getTrendData(rows);
+    if(!td||!td.values.length) return '';
+
+    const {labels,values,rawKeys,isBar} = td;
+    const metric = S.metric;
+    const n = labels.length;
+    if(!n) return '';
+
+    const W=520,H=200,padL=14,padR=14,padT=24,padB=30;
+    const mx = Math.max(...values,1);
+    const ys = v => padT+(1-v/(mx||1))*(H-padT-padB);
+    const xs = i => padL+i*((W-padL-padR)/(Math.max(n-1,1)));
+
+    let paths='',vlabs='',xlabs='';
+
+    if(isBar) {
+      const barW = Math.min(48, Math.max(12,(W-padL-padR)/(n*1.6)));
+      values.forEach((v,i)=>{
+        const cx=xs(i);
+        const bH=Math.max(2,(H-padT-padB)*(v/(mx||1)));
+        const bY=H-padB-bH;
+        paths+=`<rect x="${(cx-barW/2).toFixed(1)}" y="${bY.toFixed(1)}" width="${barW.toFixed(1)}" height="${bH.toFixed(1)}" rx="3" fill="#d4a23a" opacity=".82" class="bar-rect" data-i="${i}"/>`;
+        if(v>0) vlabs+=`<text x="${cx.toFixed(1)}" y="${(bY-5).toFixed(1)}" text-anchor="middle" font-family="'Spline Sans Mono',monospace" font-size="9.5" font-weight="600" fill="#e8bd5a" stroke="#0e1410" stroke-width="2.2" paint-order="stroke">${fmtChart(v,metric)}</text>`;
+        // for weekly bars: only label W1 entries; for short charts label all
+        const showLab = n<=8 || labels[i].endsWith('W1');
+        if(showLab) xlabs+=`<text class="ax" x="${cx.toFixed(1)}" y="${H-8}" text-anchor="middle">${labels[i]}</text>`;
+      });
+    } else {
+      let d='',started=false;
+      values.forEach((v,i)=>{
+        const x=xs(i),y=ys(v);
+        d+=(started?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)+' ';
+        started=true;
+      });
+      if(n>1){
+        const area=d+`L ${xs(n-1).toFixed(1)} ${(H-padB).toFixed(1)} L ${xs(0).toFixed(1)} ${(H-padB).toFixed(1)} Z`;
+        paths+=`<path d="${area}" fill="url(#ag)"/>`;
+      }
+      paths+=`<path d="${d}" fill="none" stroke="#d4a23a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+      if(n<=20) values.forEach((_,i)=>{ paths+=`<circle cx="${xs(i)}" cy="${ys(values[i])}" r="2.3" fill="#d4a23a"/>`; });
+      // value labels: all if ≤8, else first/last/min/max
+      const pts=values.map((v,i)=>({v,i}));
+      const idxs=pts.length<=8?pts.map(p=>p.i):[...new Set([
+        pts[0].i, pts[pts.length-1].i,
+        pts.reduce((a,b)=>b.v<a.v?b:a).i,
+        pts.reduce((a,b)=>b.v>a.v?b:a).i,
+      ])];
+      idxs.forEach(i=>{
+        const v=values[i],y=ys(v),dy=y<padT+16?14:-7;
+        vlabs+=`<text x="${xs(i).toFixed(1)}" y="${(y+dy).toFixed(1)}" text-anchor="middle" font-family="'Spline Sans Mono',monospace" font-size="9.5" font-weight="600" fill="#e8bd5a" stroke="#0e1410" stroke-width="2.4" paint-order="stroke" style="stroke-linejoin:round">${fmtChart(v,metric)}</text>`;
+      });
+      const step=Math.ceil(n/7);
+      labels.forEach((lab,i)=>{ if(i%step===0||i===n-1) xlabs+=`<text class="ax" x="${xs(i).toFixed(1)}" y="${H-8}" text-anchor="middle">${lab}</text>`; });
+    }
+
+    const modeLab = S.trendMode==='weekday'?'Avg by Weekday':S.trendMode==='weekly'?'Weekly':'Daily';
+
+    CHART = {labels,values,rawKeys,W,H,padL,padR,padT,padB,mx,isBar,metric};
+
+    return `<div class="chart" id="chartBox">
+      <div class="chart-head">
+        <h3>${METRIC_LABEL_FULL[metric]}</h3>
+        <span class="chart-sub">${modeLab}</span>
+      </div>
+      <div class="chart-readout" id="readout"></div>
+      <div class="svgwrap">
+      <svg id="trendSvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;aspect-ratio:${W}/${H}">
+        <defs><linearGradient id="ag" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color="#d4a23a" stop-opacity=".22"/>
+          <stop offset="1" stop-color="#d4a23a" stop-opacity="0"/>
+        </linearGradient></defs>
+        ${paths}${xlabs}${vlabs}
+        <line id="scrubLine" x1="0" y1="${padT}" x2="0" y2="${H-padB}" stroke="#fff" stroke-width="1" stroke-opacity="0" stroke-dasharray="2 2"/>
+        <g id="scrubDots"></g>
+      </svg></div>
+      <div class="scrub-hint">Drag across the chart to read values</div>
+    </div>`;
+  }
+
+  /* ── Store breakdown ─────────────────────────────────────────────────── */
+  function renderStoreBreakdown(rows) {
+    const metric = S.metric;
+    const storeMap = {};
+    rows.forEach(r=>{
+      if(!storeMap[r.sn]) storeMap[r.sn]={sales:0,cnt:0,st:r.st};
+      storeMap[r.sn].sales+=r.sales; storeMap[r.sn].cnt+=r.cnt;
+    });
+    const stores = Object.entries(storeMap).map(([name,m])=>({
+      name,
+      st:m.st,
+      value: metric==='avgcheck'?(m.cnt?m.sales/m.cnt:0):(metric==='sales'?m.sales:m.cnt),
+    })).filter(s=>s.value>0).sort((a,b)=>b.value-a.value);
+
+    if(!stores.length) return '';
+    const max=stores[0].value;
+    const typeFmt = t => (t||'').replace(' Stores','').replace(' Acquisition','');
+
+    let h=`<div class="slist"><div class="pl-h"><h3>${METRIC_LABEL_FULL[metric]} by Store</h3><span class="tag">${stores.length} active</span></div>`;
+    stores.forEach((s,i)=>{
+      h+=`<div class="srow">
+        <span class="srank num">${i+1}</span>
+        <div>
+          <div class="sname">${s.name}</div>
+          <div class="stype">${typeFmt(s.st)}</div>
+          <div class="sbar" style="width:${Math.max(5,s.value/max*100)}%"></div>
+        </div>
+        <div class="sval">${fmtHero(s.value,metric)}</div>
+      </div>`;
+    });
+    h+=`</div>`;
+    return h;
+  }
+
+  /* ── Trend table ─────────────────────────────────────────────────────── */
+  function renderTrendTable(rows) {
+    const td = getTrendData(rows);
+    if(!td||!td.labels.length) return '';
+    const {labels, values, rawKeys} = td;
+    const metric = S.metric;
+    const modeLab = S.trendMode==='weekday'?'Avg by Weekday':S.trendMode==='weekly'?'Weekly':'Daily';
+    let h=`<div class="ttable"><div class="pl-h"><h3>${METRIC_LABEL_FULL[metric]} · ${modeLab}</h3><span class="tag">${labels.length} rows</span></div>`;
+    for(let i=labels.length-1;i>=0;i--) {
+      h+=`<div class="trow"><span class="trow-dt">${labels[i]}</span><span class="trow-val">${fmtHero(values[i],metric)}</span></div>`;
+    }
+    h+=`</div>`;
+    return h;
+  }
+
+  /* ── Render ──────────────────────────────────────────────────────────── */
+  function render() {
+    const {start,end,label} = getDateRange();
+    const rows = filterRows(start, end);
+    const tot  = aggTotal(rows);
+
+    const scopeLabel =
+      S.scope==='all'     ? `All ${STORE_NAMES.length} stores` :
+      S.scope==='legacy'  ? 'Legacy stores' :
+      S.scope==='kevin'   ? 'Kevin Acquisition' :
+      S.scope==='dev'     ? 'Development' :
+      S.scope==='carrols' ? 'Carrols Acquisition' :
+      S.scope==='store'   ? S.selStore :
+      S.scope==='custom'  ? `${S.customStores.size} store${S.customStores.size!==1?'s':''} selected` :
+      'Portfolio';
+
+    // Multi-line label: replace \n with <br>
+    const labelHtml = label.replace(/\n/g,'<br>');
+
+    let h = `<div class="rhead">
+      <div>
+        <div class="rtitle">${METRIC_LABEL_FULL[S.metric]}</div>
+        <div class="rscope">${scopeLabel}</div>
+      </div>
+      <div class="rmeta">${labelHtml}</div>
+    </div>`;
+
+    if(S.scope==='custom' && S.customStores.size===0) {
+      $$('results').innerHTML = h+`<div class="empty">Pick one or more stores above to begin.<br>Use the +Legacy / +Kevin shortcuts to add a whole group.</div>`;
+      return;
+    }
+    if(!rows.length) {
+      const allDts = RAW.map(r=>r.dt).filter(Boolean).sort();
+      const dataMin = allDts[0]||'?', dataMax = allDts[allDts.length-1]||'?';
+      $$('results').innerHTML = h+`<div class="empty">No data for this selection.<br><span style="font-size:11px;font-family:monospace;color:var(--mut2)">Available data: ${dataMin} → ${dataMax}</span></div>`;
+      return;
+    }
+
+    // Hero
+    const heroVal = tot[S.metric];
+    h+=`<div class="hero">
+      <div class="lab">${METRIC_LABEL_FULL[S.metric]}</div>
+      <div class="val num">${fmtHero(heroVal,S.metric)}</div>
+    </div>`;
+
+    // KPI cards — other 2 metrics
+    const kpis = ['sales','count','avgcheck'].filter(m=>m!==S.metric);
+    h+=`<div class="kpis">
+      <div class="kpi"><div class="lab">${METRIC_LABEL[kpis[0]]}</div><div class="v">${fmtHero(tot[kpis[0]],kpis[0])}</div></div>
+      <div class="kpi"><div class="lab">${METRIC_LABEL[kpis[1]]}</div><div class="v">${fmtHero(tot[kpis[1]],kpis[1])}</div></div>
+    </div>`;
+
+    // Trend chart
+    h += renderChart(rows);
+
+    // Store breakdown
+    h += renderStoreBreakdown(rows);
+
+    // Trend table
+    h += renderTrendTable(rows);
+
+    const R = $$('results');
+    R.innerHTML = h;
+    R.classList.remove('fade'); void R.offsetWidth; R.classList.add('fade');
+  }
+
+  /* ── Scrub interaction (wired once) ──────────────────────────────────── */
+  function scrubAt(clientX) {
+    if(!CHART) return;
+    const svg=$$('trendSvg'); if(!svg) return;
+    const rect=svg.getBoundingClientRect();
+    const {labels,values,rawKeys,W,H,padL,padR,padT,padB,mx,isBar,metric}=CHART;
+    const n=labels.length;
+    const fx=(clientX-rect.left)/rect.width;
+    const innerW=W-padL-padR;
+    let i=Math.round((fx*W-padL)/innerW*(n-1));
+    i=Math.max(0,Math.min(n-1,i));
+    const xs=j=>padL+j*(innerW/(Math.max(n-1,1)));
+    const ys=v=>padT+(1-v/(mx||1))*(H-padT-padB);
+    const x=xs(i); const v=values[i];
+
+    if(isBar) {
+      document.querySelectorAll('.bar-rect').forEach((el,j)=>el.setAttribute('opacity',j===i?'1':'0.45'));
+    } else {
+      const ln=$$('scrubLine');
+      ln.setAttribute('x1',x);ln.setAttribute('x2',x);ln.setAttribute('stroke-opacity','.35');
+      $$('scrubDots').innerHTML=`<circle cx="${x}" cy="${ys(v)}" r="3.4" fill="#d4a23a" stroke="#0e1410" stroke-width="1.5"/>`;
+    }
+    $$('readout').innerHTML=`<span class="ro-period">${rawKeys[i]}</span><span class="ro-row"><b>${fmtHero(v,metric)}</b></span>`;
+    $$('readout').classList.add('show');
+  }
+
+  function scrubEnd() {
+    const ln=$$('scrubLine'); if(ln) ln.setAttribute('stroke-opacity','0');
+    const sd=$$('scrubDots'); if(sd) sd.innerHTML='';
+    const ro=$$('readout'); if(ro) ro.classList.remove('show');
+    document.querySelectorAll('.bar-rect').forEach(el=>el.setAttribute('opacity','0.82'));
+  }
+
+  const RES=$$('results');
+  RES.addEventListener('touchstart',e=>{if(e.target.closest('#chartBox'))scrubAt(e.touches[0].clientX);},{passive:true});
+  RES.addEventListener('touchmove', e=>{if(e.target.closest('#chartBox'))scrubAt(e.touches[0].clientX);},{passive:true});
+  RES.addEventListener('touchend',  scrubEnd);
+  RES.addEventListener('mousemove', e=>{if(e.target.closest('#chartBox'))scrubAt(e.clientX);});
+  RES.addEventListener('mouseleave',scrubEnd);
+
+  /* ── Segmented control wiring ─────────────────────────────────────────── */
+  function segWire(id, key, after) {
+    $$(id).addEventListener('click', e=>{
+      const b=e.target.closest('button'); if(!b)return;
+      [...$$(id).children].forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      S[key]=b.dataset[Object.keys(b.dataset)[0]];
+      after&&after();
+      render();
+    });
+  }
+
+  segWire('scope', 'scope', ()=>{
+    $$('storeWrap').style.display      = S.scope==='store'  ? 'block':'none';
+    $$('customScopeWrap').style.display= S.scope==='custom' ? 'block':'none';
+    if(S.scope==='custom') refreshChips();
+  });
+  $$('storeSel').addEventListener('change',e=>{ S.selStore=e.target.value; render(); });
+  segWire('metric',   'metric');
+  segWire('trendMode','trendMode',()=>{
+    const isDaily = S.trendMode==='daily';
+    $$('dowWrap').style.display = isDaily ? 'block' : 'none';
+    if(!isDaily){ S.dow=null; buildDowChips(); }
+  });
+
+  const DOW_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  function buildDowChips() {
+    $$('dowChips').innerHTML =
+      `<button class="chip${S.dow===null?' on':''}" data-dow="all"><span class="cdot"></span>All days</button>`+
+      DOW_LABELS.map((d,i)=>
+        `<button class="chip${S.dow===i?' on':''}" data-dow="${i}"><span class="cdot"></span>${d}</button>`
+      ).join('');
+  }
+  buildDowChips();
+  $$('dowWrap').style.display = S.trendMode==='daily' ? 'block' : 'none';
+  $$('dowChips').addEventListener('click', e=>{
+    const btn=e.target.closest('.chip'); if(!btn) return;
+    S.dow = btn.dataset.dow==='all' ? null : +btn.dataset.dow;
+    buildDowChips(); render();
+  });
+  segWire('dateRange','dateRange',()=>{
+    $$('periodWrap').style.display     = S.dateRange==='period'     ?'block':'none';
+    $$('periodWeekWrap').style.display = S.dateRange==='periodweek' ?'block':'none';
+    $$('customWrap').style.display     = S.dateRange==='custom'     ?'block':'none';
+  });
+
+  $$('custStart').addEventListener('change',e=>{S.custStart=e.target.value;render();});
+  $$('custEnd').addEventListener('change',  e=>{S.custEnd=e.target.value;render();});
+
+  render();
+}
+</script>
+</body>
+</html>
