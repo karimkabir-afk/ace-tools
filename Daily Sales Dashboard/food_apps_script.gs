@@ -7,36 +7,59 @@
 
 const FOOD_SHEET_ID = '1rM8b5xiKIQ0y12Z-dOi7yxzeurw_VOuDknt_ARDpK7s';
 const CACHE_KEY = 'food_v1';
-const CACHE_TTL = 900; // 15 min
+const CACHE_TTL = 1500; // 25 min (refreshed every 10 by trigger)
+
+/**
+ * ONE-TIME SETUP: run this function once from the editor (Run > setupTrigger).
+ * It creates a timer that refreshes the cache every 10 minutes,
+ * so dashboard users never hit the slow cold build.
+ */
+function setupTrigger() {
+  ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('refreshCache').timeBased().everyMinutes(10).create();
+  refreshCache(); // warm it right now too
+}
+
+function refreshCache() {
+  writeCache(buildJson());
+}
 
 function doGet(e) {
   const bust = e && e.parameter && e.parameter.bust;
-  const cache = CacheService.getScriptCache();
 
   if (!bust) {
-    const parts = [];
-    for (let i = 0; ; i++) {
-      const chunk = cache.get(CACHE_KEY + '_' + i);
-      if (chunk === null) break;
-      parts.push(chunk);
-    }
-    if (parts.length) {
-      return ContentService.createTextOutput(parts.join(''))
+    const cached = readCache();
+    if (cached) {
+      return ContentService.createTextOutput(cached)
         .setMimeType(ContentService.MimeType.JSON);
     }
   }
 
   const json = buildJson();
+  writeCache(json);
 
+  return ContentService.createTextOutput(json)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function readCache() {
+  const cache = CacheService.getScriptCache();
+  const parts = [];
+  for (let i = 0; ; i++) {
+    const chunk = cache.get(CACHE_KEY + '_' + i);
+    if (chunk === null) break;
+    parts.push(chunk);
+  }
+  return parts.length ? parts.join('') : null;
+}
+
+function writeCache(json) {
   // CacheService max 100KB per key — split into chunks
   const chunks = [];
   for (let i = 0; i < json.length; i += 90000) chunks.push(json.substr(i, 90000));
   const toStore = {};
   chunks.forEach((c, i) => toStore[CACHE_KEY + '_' + i] = c);
-  try { cache.putAll(toStore, CACHE_TTL); } catch (err) {}
-
-  return ContentService.createTextOutput(json)
-    .setMimeType(ContentService.MimeType.JSON);
+  try { CacheService.getScriptCache().putAll(toStore, CACHE_TTL); } catch (err) {}
 }
 
 function buildJson() {
@@ -65,11 +88,9 @@ function buildJson() {
   const hdrs = values[hdrRow].map(h => String(h).trim().toLowerCase());
   const col = name => hdrs.indexOf(name.toLowerCase());
 
-  const iSid  = col('Store Id');
   const iDt   = col('Date');
   const iSn   = col('Stores');
   const iItem = col('Item');
-  const iCost = col('Cost');
   const iBeg  = col('Beg Count');
   const iPur  = col('Purchases');
   const iEnd  = col('Ending Count');
@@ -90,11 +111,9 @@ function buildJson() {
     const dt = normalizeDate(r[iDt]);
     if (!dt || !r[iItem]) continue;
     rows.push({
-      sid:  r[iSid],
       dt:   dt,
       sn:   String(r[iSn] || '').replace(/^\d+\s*-\s*/, '').trim(),
       item: String(r[iItem]).trim(),
-      cost: num(r[iCost]),
       beg:  num(r[iBeg]),
       pur:  num(r[iPur]),
       end:  num(r[iEnd]),
