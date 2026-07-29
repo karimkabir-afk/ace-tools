@@ -173,6 +173,58 @@ svg{width:100%;display:block;overflow:visible}
 .trow-dt{color:var(--mut);font-family:'Spline Sans Mono',monospace;font-size:11.5px}
 .trow-val{font-family:'Spline Sans Mono',monospace;font-size:12.5px;text-align:right}
 
+/* Food view */
+.fnav{border:1px solid var(--line2);background:var(--bg2);color:var(--mut);width:42px;height:42px;
+  border-radius:10px;font-size:18px;cursor:pointer;font-family:inherit;flex:0 0 auto;transition:.15s}
+.fnav:active{transform:scale(.94);color:var(--ink)}
+.fnav:disabled{opacity:.3;cursor:default}
+.fdate{flex:1;text-align:center;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;
+  padding:11px 12px;font-size:13px;color:var(--ink)}
+.fdot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.fd-g{background:var(--grn)}.fd-a{background:var(--gold)}.fd-r{background:var(--red)}
+.fbadge{font-size:10.5px;padding:3px 9px;border-radius:999px;font-family:'Spline Sans Mono',monospace;
+  font-weight:600;white-space:nowrap}
+.fb-g{background:rgba(95,207,128,.14);color:var(--grn)}
+.fb-a{background:rgba(212,162,58,.16);color:var(--gold2)}
+.fb-r{background:rgba(232,115,107,.14);color:var(--red)}
+.frow{display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;padding:13px 16px;
+  align-items:center;border-bottom:1px solid rgba(38,52,43,.5);cursor:pointer;transition:.12s}
+.frow:last-child{border-bottom:none}
+.frow:active{background:rgba(255,255,255,.02)}
+.frow .fsn{font-size:13.5px;font-weight:500}
+.frow .feff{font-family:'Spline Sans Mono',monospace;font-size:13px;text-align:right;min-width:64px}
+.frow .fvar{font-family:'Spline Sans Mono',monospace;font-size:13px;text-align:right;min-width:70px}
+.firow{border-bottom:1px solid rgba(38,52,43,.5)}
+.firow:last-child{border-bottom:none}
+.firow .fihead{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;padding:12px 16px;
+  align-items:center;cursor:pointer}
+.firow .finame{font-size:13px;font-weight:500}
+.firow .finum{font-family:'Spline Sans Mono',monospace;font-size:12.5px;text-align:right;min-width:56px}
+.fiexp{display:none;padding:0 16px 14px 16px}
+.firow.open .fiexp{display:block}
+.figrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.figrid .fg{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+.figrid .fg .l{font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.06em;
+  font-family:'Spline Sans Mono',monospace}
+.figrid .fg .v{font-size:14px;font-family:'Spline Sans Mono',monospace;margin-top:3px}
+.fmath{font-size:11.5px;color:var(--mut);font-family:'Spline Sans Mono',monospace;margin-bottom:6px}
+.fadvice{font-size:12px;color:var(--mut);line-height:1.55}
+.fadvice.warn{color:var(--gold2)}
+.fadvice.bad{color:var(--red)}
+.fback{display:inline-flex;align-items:center;gap:6px;color:var(--mut);font-size:12.5px;cursor:pointer;
+  margin-bottom:12px;font-family:'Spline Sans Mono',monospace;transition:.15s}
+.fback:active{color:var(--ink)}
+.stkrow{display:flex;gap:4px}
+.stk{width:17px;height:17px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700}
+.stk-g{background:rgba(95,207,128,.16);color:var(--grn)}
+.stk-a{background:rgba(212,162,58,.18);color:var(--gold2)}
+.stk-r{background:rgba(232,115,107,.16);color:var(--red)}
+.stk-x{background:var(--bg2);color:var(--mut2)}
+.fnocount{text-align:center;padding:36px 20px 30px}
+.fnocount .big{font-size:15px;font-weight:600;margin:12px 0 6px}
+.fnocount .sub{font-size:12.5px;color:var(--mut);line-height:1.6}
+
 .empty{text-align:center;padding:40px 20px;color:var(--mut2);font-size:13px;line-height:1.6}
 .fade{animation:fade .35s ease}
 @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -214,12 +266,17 @@ svg{width:100%;display:block;overflow:visible}
   <div class="brand">
     <span class="dot"></span>
     <h1>ACE Brands</h1>
-    <span class="sub">Daily Sales</span>
+    <span class="sub" id="brandSub">Daily Sales</span>
   </div>
   <div class="tagline" id="tagline">Daily Sales Dashboard</div>
+  <div class="seg" id="viewSwitch" style="margin-top:14px">
+    <button class="on" data-v="sales">Sales</button>
+    <button data-v="food">Food</button>
+    <button data-v="labor" disabled style="opacity:.35;cursor:default">Labor</button>
+  </div>
 </header>
 
-<div class="panel">
+<div class="panel" id="salesPanel">
   <span class="flabel">Scope</span>
   <div class="seg" id="scope">
     <button class="on" data-s="all">Portfolio</button>
@@ -299,10 +356,24 @@ svg{width:100%;display:block;overflow:visible}
     <div class="chips" id="dowChips"></div>
   </div>
 </div>
+
+<div class="panel" id="foodPanel" style="display:none">
+  <span class="flabel">Count Date</span>
+  <div class="range-row" style="gap:6px">
+    <button class="fnav" id="fdPrev">‹</button>
+    <div class="fdate num" id="fdLabel">—</div>
+    <button class="fnav" id="fdNext">›</button>
+  </div>
+  <div id="foodHint" style="margin-top:12px;font-size:11px;color:var(--mut2);line-height:1.6;font-family:'Spline Sans Mono',monospace">
+    Efficiency = Target $ ÷ Actual $.<br>
+    90–110% healthy · 80–90% overuse ·<br>&lt;80% serious · &gt;110% suspect count
+  </div>
+</div>
 </aside>
 
 <main class="main">
   <div class="results" id="results"></div>
+  <div class="results" id="foodResults" style="display:none"></div>
 </main>
 </div>
 
@@ -999,6 +1070,316 @@ function initDashboard() {
 
   render();
 }
+</script>
+
+<script>
+/* ══════════════════════════ FOOD VIEW ══════════════════════════ */
+/* Replace with your deployed Food Apps Script URL: */
+const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVVY7MxMW1Uh2cVZwthbaa7cVEtRchwUqE_tkrWTdqAkhlFC/exec';
+
+(() => {
+  const $ = id => document.getElementById(id);
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const pd  = s => { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
+  const fmtD = s => { const d=pd(s); return MONTHS[d.getMonth()]+' '+d.getDate(); };
+  const fmtDFull = s => { const d=pd(s); const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    return DW[d.getDay()]+' · '+MONTHS[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear(); };
+  const dollar = n => (n<0?'-$':'$')+Math.abs(Math.round(n)).toLocaleString();
+  const signDollar = n => (n<0?'-$':'+$')+Math.abs(Math.round(n)).toLocaleString();
+  const pct = n => Math.round(n*100)+'%';
+  const titleCase = s => s.toLowerCase().replace(/(^|\s|\/|-)\S/g, c=>c.toUpperCase());
+
+  let FOOD = null;          // raw rows
+  let DATES = [];           // sorted unique dates
+  let ALL_STORES = [];      // every store ever seen
+  const F = { date:null, store:null, open:new Set(), loaded:false, loading:false };
+
+  /* ── View switching ─────────────────────────────────────────── */
+  let VIEW = 'sales';
+  $('viewSwitch').addEventListener('click', e => {
+    const btn = e.target.closest('button'); if(!btn || btn.disabled) return;
+    const v = btn.dataset.v; if(v===VIEW) return;
+    VIEW = v;
+    [...$('viewSwitch').children].forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+    const sales = v==='sales';
+    $('salesPanel').style.display  = sales?'':'none';
+    $('results').style.display     = sales?'':'none';
+    $('foodPanel').style.display   = sales?'none':'';
+    $('foodResults').style.display = sales?'none':'';
+    $('brandSub').textContent = sales?'Daily Sales':'Daily Food';
+    $('tagline').textContent  = sales?'Daily Sales Dashboard':'Daily Food Count Dashboard';
+    if(!sales && !F.loaded && !F.loading) loadFood();
+  });
+
+  /* ── Data ───────────────────────────────────────────────────── */
+  async function loadFood() {
+    F.loading = true;
+    $('foodResults').innerHTML = `<div class="empty"><div class="spinner" style="margin:0 auto 14px"></div>Loading food count data…</div>`;
+    try {
+      if(FOOD_URL.indexOf('PASTE_')===0) throw new Error('Food Apps Script URL not configured yet.');
+      const controller = new AbortController();
+      const timer = setTimeout(()=>controller.abort(), 30000);
+      let resp;
+      try { resp = await fetch(FOOD_URL, {redirect:'follow', signal:controller.signal}); }
+      catch(err) { clearTimeout(timer);
+        throw new Error(err.name==='AbortError'?'Request timed out after 30s.':err.message); }
+      clearTimeout(timer);
+      if(!resp.ok) throw new Error('HTTP '+resp.status);
+      const json = await resp.json();
+      if(!Array.isArray(json.rows)) throw new Error(json.error||'Bad response');
+      FOOD = json.rows;
+      const ds=new Set(), ss=new Set();
+      FOOD.forEach(r=>{ if(r.dt) ds.add(r.dt); if(r.sn) ss.add(r.sn); });
+      DATES = [...ds].sort();
+      ALL_STORES = [...ss].sort();
+      F.date = DATES[DATES.length-1];
+      F.loaded = true; F.loading = false;
+      renderFood();
+    } catch(e) {
+      F.loading = false;
+      $('foodResults').innerHTML = `<div class="empty">⚠ Could not load food data<br>
+        <span style="font-size:11px;font-family:monospace">${e.message}</span></div>`;
+    }
+  }
+
+  /* ── Classification ─────────────────────────────────────────── */
+  // Item flag: {key, label, cls('g'|'a'|'r'), advice}
+  function classifyItem(r) {
+    const counted = (r.beg||0)!==0 || (r.pur||0)!==0 || (r.end||0)!==0;
+    const act = r.act, tgt = r.tgt, actd = r.actd||0, tgtd = r.tgtd||0;
+    if(!counted && (act===0||act===null)) {
+      if((tgt||0)>0) return {key:'nocount', label:'no count', cls:'r',
+        advice:'Nothing was recorded for this item — count it.'};
+      return null; // nothing to say
+    }
+    if(act!==null && act<0) return {key:'broken', label:'broken', cls:'r',
+      advice:'Ending count is higher than start + purchases — recount, or enter the missing delivery.'};
+    if(act===0 && (tgt||0)>0) return {key:'suspect', label:'suspect', cls:'a',
+      advice:'Zero usage recorded but sales required '+tgt+' — check the counts.'};
+    if(actd>0 && tgtd>0) {
+      const eff = tgtd/actd;
+      if(eff>1.10) return {key:'suspect', label:pct(eff)+' suspect', cls:'a', eff,
+        advice:'Usage far below sales — check whether purchases were entered.'};
+      if(eff>=0.90) return {key:'good', label:pct(eff), cls:'g', eff,
+        advice:'Usage matches sales. Nothing to fix.'};
+      if(eff>=0.80) return {key:'overuse', label:pct(eff)+' overuse', cls:'a', eff,
+        advice:'Used more than sales required — check portioning and waste.'};
+      return {key:'serious', label:pct(eff)+' overuse', cls:'r', eff,
+        advice:'Serious over-usage — check portioning, waste and possible theft.'};
+    }
+    if(actd>0 && tgtd===0) return {key:'notarget', label:'no target', cls:'a',
+      advice:'Usage recorded but no sales target — check the item mapping.'};
+    return null;
+  }
+
+  // Store day summary
+  function storeDay(sn, dt) {
+    const rows = FOOD.filter(r=>r.sn===sn && r.dt===dt);
+    if(!rows.length) return {sn, status:'absent', label:'no count', cls:'r', actd:0, tgtd:0, vard:null, eff:null, rows:[]};
+    const counted = rows.some(r=>(r.beg||0)!==0||(r.pur||0)!==0||(r.end||0)!==0);
+    if(!counted) return {sn, status:'nocount', label:'no count', cls:'r', actd:0,
+      tgtd:rows.reduce((s,r)=>s+(r.tgtd||0),0), vard:null, eff:null, rows};
+    const actd = rows.reduce((s,r)=>s+(r.actd||0),0);
+    const tgtd = rows.reduce((s,r)=>s+(r.tgtd||0),0);
+    const vard = actd - tgtd;
+    if(actd<=0) return {sn, status:'broken', label:'broken', cls:'r', actd, tgtd, vard, eff:null, rows};
+    const eff = tgtd/actd;
+    let cls='g';
+    if(eff<0.80||eff>1.25) cls='r';
+    else if(eff<0.90||eff>1.10) cls='a';
+    return {sn, status:'counted', label:pct(eff), cls, actd, tgtd, vard, eff, rows};
+  }
+
+  // 7-day streak for a store, ending at date dt
+  function streak(sn, dt) {
+    const idx = DATES.indexOf(dt);
+    const out = [];
+    for(let i=Math.max(0,idx-6); i<=idx; i++) {
+      const d = DATES[i];
+      const sd = storeDay(sn, d);
+      out.push({dt:d, cls: sd.status==='counted' ? (sd.cls==='g'?'g':'a') : 'r'});
+    }
+    return out;
+  }
+
+  // Chain check: yesterday's ending vs this row's beginning
+  function chainCheck(r) {
+    const idx = DATES.indexOf(r.dt);
+    for(let i=idx-1; i>=0 && i>=idx-3; i--) {
+      const prev = FOOD.find(p=>p.sn===r.sn && p.dt===DATES[i] && p.item===r.item);
+      if(prev && ((prev.beg||0)!==0||(prev.end||0)!==0||(prev.pur||0)!==0)) {
+        const diff = (r.beg||0) - (prev.end||0);
+        return {prevDt:DATES[i], prevEnd:prev.end||0, diff};
+      }
+    }
+    return null;
+  }
+
+  /* ── Renders ────────────────────────────────────────────────── */
+  function renderFood() {
+    updateDateNav();
+    if(F.store) renderStore(); else renderPortfolio();
+  }
+
+  function updateDateNav() {
+    const idx = DATES.indexOf(F.date);
+    $('fdLabel').textContent = fmtDFull(F.date);
+    $('fdPrev').disabled = idx<=0;
+    $('fdNext').disabled = idx>=DATES.length-1;
+  }
+
+  function renderPortfolio() {
+    const days = ALL_STORES.map(sn=>storeDay(sn, F.date));
+    const counted = days.filter(d=>d.status==='counted');
+    const totAct = counted.reduce((s,d)=>s+d.actd,0);
+    const totTgt = counted.reduce((s,d)=>s+d.tgtd,0);
+    const totVar = totAct - totTgt;
+    const effP = totAct>0 ? pct(totTgt/totAct) : '—';
+
+    // sort: absent/nocount/broken first, then by |var| desc
+    days.sort((a,b)=>{
+      const bad = d => d.status!=='counted' ? 1 : 0;
+      if(bad(b)!==bad(a)) return bad(b)-bad(a);
+      if(a.status!=='counted') return 0;
+      return Math.abs(b.vard) - Math.abs(a.vard);
+    });
+
+    let h = `<div class="rhead">
+      <div><div class="rtitle">Daily Food Count</div>
+      <div class="rscope">All ${ALL_STORES.length} stores</div></div>
+      <div class="rmeta">${fmtDFull(F.date)}</div>
+    </div>`;
+
+    h += `<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi"><div class="lab">Counted</div><div class="v">${counted.length}<span style="color:var(--mut2);font-size:13px">/${ALL_STORES.length}</span></div></div>
+      <div class="kpi"><div class="lab">Efficiency</div><div class="v">${effP}</div></div>
+      <div class="kpi"><div class="lab">Vs Target</div><div class="v" style="color:${totVar>0?'var(--red)':Math.abs(totVar)<50?'var(--grn)':'var(--gold2)'}">${signDollar(totVar)}</div></div>
+    </div>`;
+
+    h += `<div class="slist"><div class="pl-h"><h3>Stores — worst first</h3><span class="tag">tap a store</span></div>`;
+    days.forEach(d=>{
+      h += `<div class="frow" data-sn="${d.sn}">
+        <span class="fdot fd-${d.cls}"></span>
+        <span class="fsn">${d.sn}</span>
+        <span class="feff" style="color:${d.status!=='counted'?'var(--red)':d.cls==='r'?'var(--red)':d.cls==='a'?'var(--gold2)':'var(--ink)'}">${d.label}</span>
+        <span class="fvar" style="color:${d.vard===null?'var(--mut2)':d.cls==='r'?'var(--red)':d.cls==='a'?'var(--gold2)':'var(--mut)'}">${d.vard===null?'—':signDollar(d.vard)}</span>
+      </div>`;
+    });
+    h += `</div>`;
+
+    h += `<div style="display:flex;gap:16px;padding:2px 6px 0;font-size:10.5px;color:var(--mut2);font-family:'Spline Sans Mono',monospace">
+      <span style="display:flex;align-items:center;gap:5px"><span class="fdot fd-g" style="width:7px;height:7px"></span>good</span>
+      <span style="display:flex;align-items:center;gap:5px"><span class="fdot fd-a" style="width:7px;height:7px"></span>needs attention</span>
+      <span style="display:flex;align-items:center;gap:5px"><span class="fdot fd-r" style="width:7px;height:7px"></span>problem</span>
+    </div>`;
+
+    const R=$('foodResults');
+    R.innerHTML = h;
+    R.classList.remove('fade'); void R.offsetWidth; R.classList.add('fade');
+    R.querySelectorAll('.frow').forEach(el=>{
+      el.addEventListener('click', ()=>{ F.store=el.dataset.sn; F.open.clear(); renderFood(); window.scrollTo({top:0}); });
+    });
+  }
+
+  function renderStore() {
+    const sd = storeDay(F.store, F.date);
+    const stk = streak(F.store, F.date);
+
+    let h = `<div class="fback" id="fBack">← All stores</div>`;
+    h += `<div class="rhead">
+      <div><div class="rtitle">${F.store}</div>
+      <div class="rscope">${sd.status==='counted'?'Efficiency '+sd.label:sd.label}</div></div>
+      <div class="rmeta">${fmtDFull(F.date)}</div>
+    </div>`;
+
+    // streak strip
+    h += `<div class="hero" style="display:flex;justify-content:space-between;align-items:center;padding:16px 18px">
+      <div class="lab" style="margin:0">Last ${stk.length} days</div>
+      <div class="stkrow">${stk.map(s=>`<span class="stk stk-${s.cls}" title="${fmtD(s.dt)}">${s.cls==='g'?'✓':s.cls==='a'?'!':'✕'}</span>`).join('')}</div>
+    </div>`;
+
+    if(sd.status!=='counted') {
+      const missTgt = sd.tgtd||0;
+      h += `<div class="slist"><div class="fnocount">
+        <div style="font-size:30px">✕</div>
+        <div class="big">${sd.status==='broken'?'Count is broken':'No count submitted'}</div>
+        <div class="sub">${sd.status==='broken'
+          ? 'Total recorded usage is negative — inventory can’t grow on its own.<br>Beginning counts or purchases are missing.'
+          : (missTgt>0 ? 'Sales expected '+dollar(missTgt)+' of food usage — nothing was recorded.' : 'No data was submitted for this date.')}</div>
+      </div></div>`;
+      if(sd.status==='broken') h += renderItems(sd);
+    } else {
+      // KPI row
+      h += `<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+        <div class="kpi"><div class="lab">Used</div><div class="v">${dollar(sd.actd)}</div></div>
+        <div class="kpi"><div class="lab">Target</div><div class="v">${dollar(sd.tgtd)}</div></div>
+        <div class="kpi"><div class="lab">Variance</div><div class="v" style="color:${sd.cls==='r'?'var(--red)':sd.cls==='a'?'var(--gold2)':'var(--grn)'}">${signDollar(sd.vard)}</div></div>
+      </div>`;
+      h += renderItems(sd);
+    }
+
+    const R=$('foodResults');
+    R.innerHTML = h;
+    R.classList.remove('fade'); void R.offsetWidth; R.classList.add('fade');
+    $('fBack').addEventListener('click', ()=>{ F.store=null; renderFood(); });
+    R.querySelectorAll('.fihead').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        const row = el.parentElement, k = row.dataset.k;
+        if(F.open.has(k)) F.open.delete(k); else F.open.add(k);
+        row.classList.toggle('open');
+      });
+    });
+  }
+
+  function renderItems(sd) {
+    const items = sd.rows.map(r=>({r, flag:classifyItem(r)}))
+      .filter(x=>x.flag)
+      .sort((a,b)=>Math.abs((b.r.actd||0)-(b.r.tgtd||0)) - Math.abs((a.r.actd||0)-(a.r.tgtd||0)));
+    if(!items.length) return '';
+
+    let h = `<div class="slist"><div class="pl-h"><h3>Items — biggest issue first</h3><span class="tag">tap for detail</span></div>`;
+    h += `<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;padding:8px 16px;
+      font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em;
+      font-family:'Spline Sans Mono',monospace;border-bottom:1px solid var(--line)">
+      <span>Item</span><span style="text-align:right;min-width:56px">Used</span><span style="text-align:right;min-width:56px">Target</span><span style="text-align:right;min-width:80px">Flag</span></div>`;
+
+    items.forEach(({r,flag})=>{
+      const k = r.item;
+      const open = F.open.has(k);
+      const cc = chainCheck(r);
+      const ccBad = cc && Math.abs(cc.diff)>0.01;
+      h += `<div class="firow${open?' open':''}" data-k="${k}">
+        <div class="fihead">
+          <span class="finame">${titleCase(r.item)}</span>
+          <span class="finum">${r.act===null?'—':(+r.act).toLocaleString()}</span>
+          <span class="finum">${r.tgt===null?'—':(+r.tgt).toLocaleString()}</span>
+          <span style="text-align:right;min-width:80px"><span class="fbadge fb-${flag.cls}">${flag.label}</span></span>
+        </div>
+        <div class="fiexp">
+          <div class="figrid">
+            <div class="fg"><div class="l">Beginning</div><div class="v">${(r.beg??0).toLocaleString()}</div></div>
+            <div class="fg"><div class="l">Purchases</div><div class="v">${(r.pur??0).toLocaleString()}</div></div>
+            <div class="fg"><div class="l">Ending</div><div class="v">${(r.end??0).toLocaleString()}</div></div>
+            <div class="fg"><div class="l">Used</div><div class="v">${(r.act??0).toLocaleString()}</div></div>
+          </div>
+          <div class="fmath">${(r.beg??0).toLocaleString()} + ${(r.pur??0).toLocaleString()} − ${(r.end??0).toLocaleString()} = ${(r.act??0).toLocaleString()} used · target ${(r.tgt??0).toLocaleString()} · ${signDollar((r.actd||0)-(r.tgtd||0))}</div>
+          ${ccBad?`<div class="fadvice warn" style="margin-bottom:5px">⚠ Beginning (${(r.beg??0).toLocaleString()}) doesn't match previous ending on ${fmtD(cc.prevDt)} (${cc.prevEnd.toLocaleString()}) — off by ${Math.abs(Math.round(cc.diff)).toLocaleString()}.</div>`:''}
+          <div class="fadvice ${flag.cls==='r'?'bad':flag.cls==='a'?'warn':''}">${flag.advice}</div>
+        </div>
+      </div>`;
+    });
+    h += `</div>`;
+    return h;
+  }
+
+  /* ── Date nav wiring ────────────────────────────────────────── */
+  $('fdPrev').addEventListener('click', ()=>{
+    const i=DATES.indexOf(F.date); if(i>0){ F.date=DATES[i-1]; renderFood(); }
+  });
+  $('fdNext').addEventListener('click', ()=>{
+    const i=DATES.indexOf(F.date); if(i<DATES.length-1){ F.date=DATES[i+1]; renderFood(); }
+  });
+})();
 </script>
 </body>
 </html>
