@@ -1158,13 +1158,14 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
       advice:'Zero usage recorded but sales required '+tgt+' — check the counts.'};
     if(actd>0 && tgtd>0) {
       const eff = tgtd/actd;
-      if(eff>1.10) return {key:'suspect', label:pct(eff)+' suspect', cls:'a', eff,
+      const dev = Math.round(Math.abs(actd/tgtd-1)*100); // % over/under target
+      if(eff>1.10) return {key:'suspect', label:dev+'% under', cls:'a', eff,
         advice:'Usage far below sales — check whether purchases were entered.'};
-      if(eff>=0.90) return {key:'good', label:pct(eff), cls:'g', eff,
+      if(eff>=0.90) return {key:'good', label:'on target', cls:'g', eff,
         advice:'Usage matches sales. Nothing to fix.'};
-      if(eff>=0.80) return {key:'overuse', label:pct(eff)+' overuse', cls:'a', eff,
+      if(eff>=0.80) return {key:'overuse', label:dev+'% over', cls:'a', eff,
         advice:'Used more than sales required — check portioning and waste.'};
-      return {key:'serious', label:pct(eff)+' overuse', cls:'r', eff,
+      return {key:'serious', label:dev+'% over', cls:'r', eff,
         advice:'Serious over-usage — check portioning, waste and possible theft.'};
     }
     if(actd>0 && tgtd===0) return {key:'notarget', label:'no target', cls:'a',
