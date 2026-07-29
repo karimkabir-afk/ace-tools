@@ -1126,6 +1126,18 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
       clearTimeout(timer);
       if(!resp.ok) throw new Error('HTTP '+resp.status);
       const json = await resp.json();
+      if(json.warming) {
+        // Cache is being rebuilt server-side — wait and retry (up to ~2 min)
+        F.warmTries = (F.warmTries||0)+1;
+        if(F.warmTries<=8) {
+          $('foodResults').innerHTML = `<div class="empty"><div class="spinner" style="margin:0 auto 14px"></div>Data is being refreshed on the server…<br><span style="font-size:11px;color:var(--mut2)">retrying automatically (${F.warmTries}/8)</span></div>`;
+          F.loading = false;
+          setTimeout(()=>loadFood(), 15000);
+          return;
+        }
+        throw new Error('Server is still building the data — try again in a minute.');
+      }
+      F.warmTries = 0;
       if(!Array.isArray(json.rows)) throw new Error(json.error||'Bad response');
       FOOD = json.rows;
       const ds=new Set(), ss=new Set();

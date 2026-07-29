@@ -1,33 +1,43 @@
 /**
- * ACE Brands — Daily Food Variance API
- * Deploy: Extensions > Apps Script > paste this > Deploy > New deployment
- *         Type: Web app · Execute as: Me · Who has access: Anyone
- * Sheet:  https://docs.google.com/spreadsheets/d/1rM8b5xiKIQ0y12Z-dOi7yxzeurw_VOuDknt_ARDpK7s
+ * ACE Brands — Daily Food Variance API  (v2 — lock + trigger)
+ *
+ * SETUP (once):
+ *   1. Paste this over the old code, Ctrl+S.
+ *   2. Run > setupTrigger  (creates the 10-min cache refresh, removes old triggers)
+ *   3. Deploy > Manage deployments > pencil > New version > Deploy
+ *
+ * Sheet: https://docs.google.com/spreadsheets/d/1rM8b5xiKIQ0y12Z-dOi7yxzeurw_VOuDknt_ARDpK7s
  */
 
 const FOOD_SHEET_ID = '1rM8b5xiKIQ0y12Z-dOi7yxzeurw_VOuDknt_ARDpK7s';
-const CACHE_KEY = 'food_v1';
-const CACHE_TTL = 1500; // 25 min (refreshed every 10 by trigger)
+const CACHE_KEY = 'food_v2';
+const CACHE_TTL = 21600; // 6h — trigger refreshes every 10 min anyway; long TTL = stale beats nothing
 
-/**
- * ONE-TIME SETUP: run this function once from the editor (Run > setupTrigger).
- * It creates a timer that refreshes the cache every 10 minutes,
- * so dashboard users never hit the slow cold build.
- */
+/** One-time: install the refresh trigger (removes any old ones first). */
 function setupTrigger() {
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('refreshCache').timeBased().everyMinutes(10).create();
-  refreshCache(); // warm it right now too
+  refreshCache();
 }
 
+/** Called by the timer. Lock ensures only one rebuild ever runs at a time. */
 function refreshCache() {
-  writeCache(buildJson());
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return; // another rebuild is already running — skip
+  try {
+    writeCache(buildJson());
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function doGet(e) {
-  const bust = e && e.parameter && e.parameter.bust;
+  const p = e && e.parameter || {};
 
-  if (!bust) {
+  if (p.diag) return diag();
+
+  // 1. Serve from cache — the only path users should ever hit.
+  if (!p.bust) {
     const cached = readCache();
     if (cached) {
       return ContentService.createTextOutput(cached)
@@ -35,48 +45,69 @@ function doGet(e) {
     }
   }
 
-  const json = buildJson();
-  writeCache(json);
-
-  return ContentService.createTextOutput(json)
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function readCache() {
-  const cache = CacheService.getScriptCache();
-  const parts = [];
-  for (let i = 0; ; i++) {
-    const chunk = cache.get(CACHE_KEY + '_' + i);
-    if (chunk === null) break;
-    parts.push(chunk);
+  // 2. Cache empty. Only ONE request may rebuild; everyone else gets
+  //    a tiny "warming" response immediately instead of piling up.
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(2000)) {
+    return ContentService.createTextOutput(JSON.stringify({warming: true}))
+      .setMimeType(ContentService.MimeType.JSON);
   }
-  return parts.length ? parts.join('') : null;
+  try {
+    // Double-check: the build that held the lock may have just filled the cache.
+    const cached2 = p.bust ? null : readCache();
+    if (cached2) {
+      return ContentService.createTextOutput(cached2)
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    const json = buildJson();
+    writeCache(json);
+    return ContentService.createTextOutput(json)
+      .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
 }
 
-function writeCache(json) {
-  // CacheService max 100KB per key — split into chunks
-  const chunks = [];
-  for (let i = 0; i < json.length; i += 90000) chunks.push(json.substr(i, 90000));
-  const toStore = {};
-  chunks.forEach((c, i) => toStore[CACHE_KEY + '_' + i] = c);
-  try { CacheService.getScriptCache().putAll(toStore, CACHE_TTL); } catch (err) {}
-}
-
-function buildJson() {
+/** ?diag=1 — timing + dimensions, to see where the seconds go. */
+function diag() {
+  const t0 = Date.now();
   const ss = SpreadsheetApp.openById(FOOD_SHEET_ID);
-  // Target the tab: gid=0, or a tab whose name mentions inventory/shift/count
+  const t1 = Date.now();
+  const sh = pickSheet(ss);
+  const lastRow = sh.getLastRow(), lastCol = sh.getLastColumn();
+  const maxRows = sh.getMaxRows(), maxCols = sh.getMaxColumns();
+  const t2 = Date.now();
+  const values = sh.getRange(1, 1, lastRow, Math.min(lastCol, 16)).getValues();
+  const t3 = Date.now();
+  return ContentService.createTextOutput(JSON.stringify({
+    sheetName: sh.getName(),
+    lastRow, lastCol, maxRows, maxCols,
+    openMs: t1 - t0, metaMs: t2 - t1, readMs: t3 - t2,
+    cacheChunks: (readCache() || '').length,
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function pickSheet(ss) {
   let sh = null;
-  ss.getSheets().forEach(s => {
-    if (s.getSheetId() === 0) sh = s;
-  });
+  ss.getSheets().forEach(s => { if (s.getSheetId() === 0) sh = s; });
   if (!sh) {
     ss.getSheets().forEach(s => {
       const n = s.getName().toLowerCase();
       if (!sh && (n.indexOf('inventory') !== -1 || n.indexOf('shift') !== -1 || n.indexOf('count') !== -1)) sh = s;
     });
   }
-  if (!sh) sh = ss.getSheets()[0];
-  const values = sh.getDataRange().getValues();
+  return sh || ss.getSheets()[0];
+}
+
+function buildJson() {
+  const ss = SpreadsheetApp.openById(FOOD_SHEET_ID);
+  const sh = pickSheet(ss);
+
+  // Read only the used rows and at most 16 columns — never the whole grid.
+  const lastRow = sh.getLastRow();
+  const lastCol = Math.min(sh.getLastColumn(), 16);
+  if (lastRow < 2) return JSON.stringify({generated: new Date().toISOString(), rows: []});
+  const values = sh.getRange(1, 1, lastRow, lastCol).getValues();
 
   // Find header row (contains 'Item')
   let hdrRow = -1;
@@ -125,6 +156,26 @@ function buildJson() {
   }
 
   return JSON.stringify({generated: new Date().toISOString(), rows: rows});
+}
+
+function readCache() {
+  const cache = CacheService.getScriptCache();
+  const parts = [];
+  for (let i = 0; ; i++) {
+    const chunk = cache.get(CACHE_KEY + '_' + i);
+    if (chunk === null) break;
+    parts.push(chunk);
+  }
+  return parts.length ? parts.join('') : null;
+}
+
+function writeCache(json) {
+  // CacheService max 100KB per key — split into chunks
+  const chunks = [];
+  for (let i = 0; i < json.length; i += 90000) chunks.push(json.substr(i, 90000));
+  const toStore = {};
+  chunks.forEach((c, i) => toStore[CACHE_KEY + '_' + i] = c);
+  try { CacheService.getScriptCache().putAll(toStore, CACHE_TTL); } catch (err) {}
 }
 
 function normalizeDate(v) {
