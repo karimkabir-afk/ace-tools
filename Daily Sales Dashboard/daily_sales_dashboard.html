@@ -1114,15 +1114,15 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
   /* ── Data ───────────────────────────────────────────────────── */
   async function loadFood() {
     F.loading = true;
-    $('foodResults').innerHTML = `<div class="empty"><div class="spinner" style="margin:0 auto 14px"></div>Loading food count data…</div>`;
+    $('foodResults').innerHTML = `<div class="empty"><div class="spinner" style="margin:0 auto 14px"></div>Loading food count data…<br><span style="font-size:11px;color:var(--mut2)">First load of the day can take up to a minute</span></div>`;
     try {
       if(FOOD_URL.indexOf('PASTE_')===0) throw new Error('Food Apps Script URL not configured yet.');
       const controller = new AbortController();
-      const timer = setTimeout(()=>controller.abort(), 30000);
+      const timer = setTimeout(()=>controller.abort(), 90000);
       let resp;
       try { resp = await fetch(FOOD_URL, {redirect:'follow', signal:controller.signal}); }
       catch(err) { clearTimeout(timer);
-        throw new Error(err.name==='AbortError'?'Request timed out after 30s.':err.message); }
+        throw new Error(err.name==='AbortError'?'Request timed out after 90s — try again, the first load of the day is slow.':err.message); }
       clearTimeout(timer);
       if(!resp.ok) throw new Error('HTTP '+resp.status);
       const json = await resp.json();
@@ -1138,7 +1138,10 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     } catch(e) {
       F.loading = false;
       $('foodResults').innerHTML = `<div class="empty">⚠ Could not load food data<br>
-        <span style="font-size:11px;font-family:monospace">${e.message}</span></div>`;
+        <span style="font-size:11px;font-family:monospace">${e.message}</span><br>
+        <button id="foodRetry" class="fnav" style="width:auto;padding:0 22px;margin-top:16px;font-size:13px">Try again</button></div>`;
+      const rb = $('foodRetry');
+      if(rb) rb.addEventListener('click', ()=>loadFood());
     }
   }
 
