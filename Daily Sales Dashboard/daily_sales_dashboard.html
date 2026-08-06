@@ -1387,14 +1387,17 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
   function renderItems(sd) {
     const items = sd.rows.map(r=>({r, flag:classifyItem(r)}))
       .filter(x=>x.flag)
-      .sort((a,b)=>Math.abs((b.r.actd||0)-(b.r.tgtd||0)) - Math.abs((a.r.actd||0)-(a.r.tgtd||0)));
+      .sort((a,b)=>a.r.item.localeCompare(b.r.item));
     if(!items.length) return '';
 
-    let h = `<div class="slist"><div class="pl-h"><h3>Items — biggest issue first</h3><span class="tag">tap for detail</span></div>`;
-    h += `<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;padding:8px 16px;
-      font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em;
-      font-family:'Spline Sans Mono',monospace;border-bottom:1px solid var(--line)">
-      <span>Item</span><span style="text-align:right;min-width:56px">Used</span><span style="text-align:right;min-width:56px">Target</span><span style="text-align:right;min-width:80px">Flag</span></div>`;
+    let h = `<div class="slist" style="overflow:visible"><div class="fcolhead">
+      <div class="pl-h" style="border-bottom:none;padding-bottom:8px"><h3>Items</h3><span class="tag">tap for detail</span></div>
+      <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;padding:0 16px 9px;
+        font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em;
+        font-family:'Spline Sans Mono',monospace">
+        <span>Item</span><span style="text-align:right;min-width:56px">Used</span><span style="text-align:right;min-width:56px">Target</span><span style="text-align:right;min-width:80px">Flag</span>
+      </div>
+    </div>`;
 
     items.forEach(({r,flag})=>{
       const k = r.item;
