@@ -1287,8 +1287,8 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
       h += `<div class="frow" data-sn="${d.sn}">
         <span class="fdot fd-${d.cls}"></span>
         <span class="fsn">${d.sn}</span>
-        <span class="feff" style="color:${d.status!=='counted'?'var(--red)':d.cls==='r'?'var(--red)':d.cls==='a'?'var(--gold2)':'var(--ink)'}">${d.label}</span>
-        <span class="fvar" style="color:${d.vard===null?'var(--mut2)':d.cls==='r'?'var(--red)':d.cls==='a'?'var(--gold2)':'var(--mut)'}">${d.vard===null?'—':signDollar(d.vard)}</span>
+        <span class="feff" style="color:${d.status!=='counted'?'var(--red)':d.cls==='r'?'var(--red)':d.cls==='a'?'var(--gold2)':'var(--grn)'}">${d.label}</span>
+        <span class="fvar" style="color:${d.vard===null?'var(--mut2)':d.cls==='r'?'var(--red)':d.cls==='a'?'var(--gold2)':'var(--grn)'}">${d.vard===null?'—':signDollar(d.vard)}</span>
       </div>`;
     });
     h += `</div>`;
