@@ -1188,17 +1188,17 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
       return null; // nothing to say
     }
     if(act!==null && act<0) return {key:'broken', effLabel:'—', effCls:'m', status:'Incorrect Count', statusCls:'r', cls:'r',
-      advice:'Ending count is higher than start + purchases — recount, or enter the missing delivery.'};
+      advice:'Ending count is higher than start + purchases — recount'};
     if(act===0 && (tgt||0)>0) return {key:'suspect', effLabel:'—', effCls:'m', status:'Under Usage', statusCls:'r', cls:'a',
       advice:'Zero usage recorded but sales required '+tgt+' — check the counts.'};
     if(actd>0 && tgtd>0) {
       const eff = tgtd/actd;
       const effLabel = pct(eff);
-      if(eff>1.05) return {key:'suspect', effLabel, effCls:'a', status:'Under Usage', statusCls:'r', cls:'a', eff,
+      if(eff>1.05) return {key:'suspect', effLabel, effCls:'r', status:'Under Usage', statusCls:'r', cls:'a', eff,
         advice:'Usage far below sales — check whether purchases were entered.'};
       if(eff>=0.90) return {key:'good', effLabel, effCls:'g', status:'On Target', statusCls:'g', cls:'g', eff,
         advice:'Usage matches sales. Nothing to fix.'};
-      if(eff>=0.80) return {key:'overuse', effLabel, effCls:'a', status:'Over Usage', statusCls:'r', cls:'a', eff,
+      if(eff>=0.80) return {key:'overuse', effLabel, effCls:'r', status:'Over Usage', statusCls:'r', cls:'a', eff,
         advice:'Used more than sales required — check portioning and waste.'};
       return {key:'serious', effLabel, effCls:'r', status:'Over Usage', statusCls:'r', cls:'r', eff,
         advice:'Serious over-usage — check portioning, waste and possible theft.'};
