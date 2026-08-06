@@ -221,6 +221,8 @@ svg{width:100%;display:block;overflow:visible}
 .stk-a{background:rgba(212,162,58,.18);color:var(--gold2)}
 .stk-r{background:rgba(232,115,107,.16);color:var(--red)}
 .stk-x{background:var(--bg2);color:var(--mut2)}
+.fcolhead{position:sticky;top:0;z-index:40;background:var(--card);
+  border-radius:var(--r) var(--r) 0 0;border-bottom:1px solid var(--line)}
 .fnocount{text-align:center;padding:36px 20px 30px}
 .fnocount .big{font-size:15px;font-weight:600;margin:12px 0 6px}
 .fnocount .sub{font-size:12.5px;color:var(--mut);line-height:1.6}
@@ -1272,7 +1274,15 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
       <div class="kpi"><div class="lab">Vs Target</div><div class="v" style="color:${totVar>0?'var(--red)':Math.abs(totVar)<50?'var(--grn)':'var(--gold2)'}">${signDollar(totVar)}</div></div>
     </div>`;
 
-    h += `<div class="slist"><div class="pl-h"><h3>Stores — worst first</h3><span class="tag">tap a store</span></div>`;
+    h += `<div class="slist" style="overflow:visible"><div class="fcolhead">
+      <div class="pl-h" style="border-bottom:none;padding-bottom:8px"><h3>Stores — worst first</h3><span class="tag">tap a store</span></div>
+      <div class="frow" style="cursor:default;padding-top:0;padding-bottom:9px">
+        <span style="width:9px"></span>
+        <span class="fsn" style="font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em;font-family:'Spline Sans Mono',monospace;font-weight:400">Store</span>
+        <span class="feff" style="font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em">Efficiency</span>
+        <span class="fvar" style="font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em">Vs Target</span>
+      </div>
+    </div>`;
     days.forEach(d=>{
       h += `<div class="frow" data-sn="${d.sn}">
         <span class="fdot fd-${d.cls}"></span>
