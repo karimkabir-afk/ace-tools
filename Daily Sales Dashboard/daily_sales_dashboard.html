@@ -368,7 +368,7 @@ svg{width:100%;display:block;overflow:visible}
   </div>
   <div id="foodHint" style="margin-top:12px;font-size:11px;color:var(--mut2);line-height:1.6;font-family:'Spline Sans Mono',monospace">
     Efficiency = Target $ ÷ Actual $.<br>
-    90–110% healthy · 80–90% overuse ·<br>&lt;80% serious · &gt;110% suspect count
+    90–105% healthy · 80–90% overuse ·<br>&lt;80% serious · &gt;105% suspect count
   </div>
 </div>
 </aside>
@@ -1176,7 +1176,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     if(actd>0 && tgtd>0) {
       const eff = tgtd/actd;
       const dev = Math.round(Math.abs(actd/tgtd-1)*100); // % over/under target
-      if(eff>1.10) return {key:'suspect', label:dev+'% under', cls:'a', eff,
+      if(eff>1.05) return {key:'suspect', label:dev+'% under', cls:'a', eff,
         advice:'Usage far below sales — check whether purchases were entered.'};
       if(eff>=0.90) return {key:'good', label:'on target', cls:'g', eff,
         advice:'Usage matches sales. Nothing to fix.'};
@@ -1204,7 +1204,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     const eff = tgtd/actd;
     let cls='g';
     if(eff<0.80||eff>1.25) cls='r';
-    else if(eff<0.90||eff>1.10) cls='a';
+    else if(eff<0.90||eff>1.05) cls='a';
     return {sn, status:'counted', label:pct(eff), cls, actd, tgtd, vard, eff, rows};
   }
 
