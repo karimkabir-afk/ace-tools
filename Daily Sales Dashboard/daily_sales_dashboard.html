@@ -13,7 +13,7 @@
   --line:#26342b;--line2:#324239;
   --ink:#eef3ee;--mut:#8fa394;--mut2:#5f7065;
   --gold:#d4a23a;--gold2:#e8bd5a;
-  --grn:#5fcf80;--red:#e8736b;
+  --grn:#5fcf80;--red:#e8736b;--red2:#cf5268;
   --r:16px;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -187,6 +187,7 @@ svg{width:100%;display:block;overflow:visible}
 .fb-g{background:rgba(95,207,128,.14);color:var(--grn)}
 .fb-a{background:rgba(212,162,58,.16);color:var(--gold2)}
 .fb-r{background:rgba(232,115,107,.14);color:var(--red)}
+.fb-r2{background:rgba(207,82,104,.16);color:var(--red2)}
 .frow{display:grid;grid-template-columns:auto 1fr auto 12px;gap:12px;padding:13px 16px;
   align-items:center;border-bottom:1px solid rgba(38,52,43,.5);cursor:pointer;transition:.12s}
 .frow:last-child{border-bottom:none}
@@ -1189,12 +1190,12 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     }
     if(act!==null && act<0) return {key:'broken', effLabel:'—', effCls:'m', status:'Incorrect Count', statusCls:'r', cls:'r',
       advice:'Ending count is higher than start + purchases — recount'};
-    if(act===0 && (tgt||0)>0) return {key:'suspect', effLabel:'—', effCls:'m', status:'Under Usage', statusCls:'r', cls:'a',
+    if(act===0 && (tgt||0)>0) return {key:'suspect', effLabel:'—', effCls:'m', status:'Under Usage', statusCls:'r2', cls:'a',
       advice:'Zero usage recorded but sales required '+tgt+' — check the counts.'};
     if(actd>0 && tgtd>0) {
       const eff = tgtd/actd;
       const effLabel = pct(eff);
-      if(eff>1.05) return {key:'suspect', effLabel, effCls:'r', status:'Under Usage', statusCls:'r', cls:'a', eff,
+      if(eff>1.05) return {key:'suspect', effLabel, effCls:'r', status:'Under Usage', statusCls:'r2', cls:'a', eff,
         advice:'Usage far below sales — check whether purchases were entered.'};
       if(eff>=0.90) return {key:'good', effLabel, effCls:'g', status:'On Target', statusCls:'g', cls:'g', eff,
         advice:'Usage matches sales. Nothing to fix.'};
