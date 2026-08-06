@@ -1201,7 +1201,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
       if(eff>=0.80) return {key:'overuse', effLabel, effCls:'r', status:'Over Usage', statusCls:'r', cls:'a', eff,
         advice:'Used more than sales required — check portioning and waste.'};
       return {key:'serious', effLabel, effCls:'r', status:'Over Usage', statusCls:'r', cls:'r', eff,
-        advice:'Serious over-usage — check portioning, waste and possible theft.'};
+        advice:'Serious over-usage — check waste and possible theft.'};
     }
     if(actd>0 && tgtd===0) return {key:'notarget', effLabel:'—', effCls:'m', status:'No Target', statusCls:'a', cls:'a',
       advice:'Usage recorded but no sales target — check the item mapping.'};
