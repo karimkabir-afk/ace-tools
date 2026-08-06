@@ -187,10 +187,13 @@ svg{width:100%;display:block;overflow:visible}
 .fb-g{background:rgba(95,207,128,.14);color:var(--grn)}
 .fb-a{background:rgba(212,162,58,.16);color:var(--gold2)}
 .fb-r{background:rgba(232,115,107,.14);color:var(--red)}
-.frow{display:grid;grid-template-columns:auto 1fr auto;gap:12px;padding:13px 16px;
+.frow{display:grid;grid-template-columns:auto 1fr auto 12px;gap:12px;padding:13px 16px;
   align-items:center;border-bottom:1px solid rgba(38,52,43,.5);cursor:pointer;transition:.12s}
 .frow:last-child{border-bottom:none}
 .frow:active{background:rgba(255,255,255,.02)}
+.frow[data-sn]:hover{background:rgba(212,162,58,.05)}
+.fchev{color:var(--mut2);font-size:15px;line-height:1;text-align:right;transition:.14s}
+.frow[data-sn]:hover .fchev{color:var(--gold2);transform:translateX(2px)}
 .frow .fsn{font-size:13.5px;font-weight:500}
 .frow .feff{font-family:'Spline Sans Mono',monospace;font-size:13px;text-align:right;min-width:64px}
 .frow .fvar{font-family:'Spline Sans Mono',monospace;font-size:13px;text-align:right;min-width:70px}
@@ -1287,6 +1290,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
         <span style="width:9px"></span>
         <span class="fsn" style="font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em;font-family:'Spline Sans Mono',monospace;font-weight:400">Store</span>
         <span class="feff" style="font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em">Items on target</span>
+        <span></span>
       </div>
     </div>`;
     days.forEach(d=>{
@@ -1294,6 +1298,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
         <span class="fdot fd-${d.cls}"></span>
         <span class="fsn">${d.sn}</span>
         <span class="feff" style="color:${d.cls==='r'?'var(--red)':d.cls==='a'?'var(--gold2)':'var(--grn)'}">${d.label}</span>
+        <span class="fchev">›</span>
       </div>`;
     });
     h += `</div>`;
