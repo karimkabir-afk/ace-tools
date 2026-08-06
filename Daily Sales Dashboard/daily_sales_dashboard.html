@@ -199,10 +199,22 @@ svg{width:100%;display:block;overflow:visible}
 .frow .fvar{font-family:'Spline Sans Mono',monospace;font-size:13px;text-align:right;min-width:70px}
 .firow{border-bottom:1px solid rgba(38,52,43,.5)}
 .firow:last-child{border-bottom:none}
-.firow .fihead{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;padding:12px 16px;
-  align-items:center;cursor:pointer}
+.firow .fihead,.figrid-h{display:grid;
+  grid-template-columns:minmax(0,1fr) 52px 52px 58px 96px;gap:9px;padding:12px 16px;align-items:center}
+.firow .fihead{cursor:pointer}
+.figrid-h{padding:0 16px 9px;font-size:9.5px;color:var(--mut2);text-transform:uppercase;
+  letter-spacing:.07em;font-family:'Spline Sans Mono',monospace}
+.figrid-h span+span{text-align:right}
 .firow .finame{font-size:13px;font-weight:500}
-.firow .finum{font-family:'Spline Sans Mono',monospace;font-size:12.5px;text-align:right;min-width:56px}
+.firow .finum{font-family:'Spline Sans Mono',monospace;font-size:12.5px;text-align:right}
+.fieff{font-weight:600}
+.fe-g{color:var(--grn)}.fe-a{color:var(--gold2)}.fe-r{color:var(--red)}.fe-m{color:var(--mut2)}
+.fistat{text-align:right}
+@media(max-width:520px){
+  .firow .fihead,.figrid-h{grid-template-columns:minmax(0,1fr) 44px 44px 50px 84px;gap:6px}
+  .firow .finum{font-size:11.5px}
+  .fbadge{font-size:9.5px;padding:3px 6px}
+}
 .fiexp{display:none;padding:0 16px 14px 16px}
 .firow.open .fiexp{display:block}
 .figrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
@@ -1165,32 +1177,33 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
   }
 
   /* ── Classification ─────────────────────────────────────────── */
-  // Item flag: {key, label, cls('g'|'a'|'r'), advice}
+  // Item flag: {key, effLabel, effCls, status, statusCls, cls('g'|'a'|'r'), advice}
+  // effLabel is the efficiency % (Target $ ÷ Actual $); status names the direction.
   function classifyItem(r) {
     const counted = (r.beg||0)!==0 || (r.pur||0)!==0 || (r.end||0)!==0;
     const act = r.act, tgt = r.tgt, actd = r.actd||0, tgtd = r.tgtd||0;
     if(!counted && (act===0||act===null)) {
-      if((tgt||0)>0) return {key:'nocount', label:'no count', cls:'r',
+      if((tgt||0)>0) return {key:'nocount', effLabel:'—', effCls:'m', status:'No Count', statusCls:'r', cls:'r',
         advice:'Nothing was recorded for this item — count it.'};
       return null; // nothing to say
     }
-    if(act!==null && act<0) return {key:'broken', label:'incorrect count', cls:'r',
+    if(act!==null && act<0) return {key:'broken', effLabel:'—', effCls:'m', status:'Incorrect Count', statusCls:'r', cls:'r',
       advice:'Ending count is higher than start + purchases — recount, or enter the missing delivery.'};
-    if(act===0 && (tgt||0)>0) return {key:'suspect', label:'suspect', cls:'a',
+    if(act===0 && (tgt||0)>0) return {key:'suspect', effLabel:'—', effCls:'m', status:'Under Usage', statusCls:'r', cls:'a',
       advice:'Zero usage recorded but sales required '+tgt+' — check the counts.'};
     if(actd>0 && tgtd>0) {
       const eff = tgtd/actd;
-      const dev = Math.round(Math.abs(actd/tgtd-1)*100); // % over/under target
-      if(eff>1.05) return {key:'suspect', label:dev+'% under', cls:'a', eff,
+      const effLabel = pct(eff);
+      if(eff>1.05) return {key:'suspect', effLabel, effCls:'a', status:'Under Usage', statusCls:'r', cls:'a', eff,
         advice:'Usage far below sales — check whether purchases were entered.'};
-      if(eff>=0.90) return {key:'good', label:'on target', cls:'g', eff,
+      if(eff>=0.90) return {key:'good', effLabel, effCls:'g', status:'On Target', statusCls:'g', cls:'g', eff,
         advice:'Usage matches sales. Nothing to fix.'};
-      if(eff>=0.80) return {key:'overuse', label:dev+'% over', cls:'a', eff,
+      if(eff>=0.80) return {key:'overuse', effLabel, effCls:'a', status:'Over Usage', statusCls:'r', cls:'a', eff,
         advice:'Used more than sales required — check portioning and waste.'};
-      return {key:'serious', label:dev+'% over', cls:'r', eff,
+      return {key:'serious', effLabel, effCls:'r', status:'Over Usage', statusCls:'r', cls:'r', eff,
         advice:'Serious over-usage — check portioning, waste and possible theft.'};
     }
-    if(actd>0 && tgtd===0) return {key:'notarget', label:'no target', cls:'a',
+    if(actd>0 && tgtd===0) return {key:'notarget', effLabel:'—', effCls:'m', status:'No Target', statusCls:'a', cls:'a',
       advice:'Usage recorded but no sales target — check the item mapping.'};
     return null;
   }
@@ -1392,10 +1405,8 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
 
     let h = `<div class="slist" style="overflow:visible"><div class="fcolhead">
       <div class="pl-h" style="border-bottom:none;padding-bottom:8px"><h3>Items</h3><span class="tag">tap for detail</span></div>
-      <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;padding:0 16px 9px;
-        font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em;
-        font-family:'Spline Sans Mono',monospace">
-        <span>Item</span><span style="text-align:right;min-width:56px">Used</span><span style="text-align:right;min-width:56px">Target</span><span style="text-align:right;min-width:80px">Flag</span>
+      <div class="figrid-h">
+        <span>Item</span><span>Used</span><span>Target</span><span>Efficiency</span><span>Status</span>
       </div>
     </div>`;
 
@@ -1409,7 +1420,8 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
           <span class="finame">${titleCase(r.item)}</span>
           <span class="finum">${r.act===null?'—':(+r.act).toLocaleString()}</span>
           <span class="finum">${r.tgt===null?'—':(+r.tgt).toLocaleString()}</span>
-          <span style="text-align:right;min-width:80px"><span class="fbadge fb-${flag.cls}">${flag.label}</span></span>
+          <span class="finum fieff fe-${flag.effCls}">${flag.effLabel}</span>
+          <span class="fistat"><span class="fbadge fb-${flag.statusCls}">${flag.status}</span></span>
         </div>
         <div class="fiexp">
           <div class="figrid">
