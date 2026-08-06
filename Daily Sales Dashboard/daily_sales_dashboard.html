@@ -1167,7 +1167,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
         advice:'Nothing was recorded for this item — count it.'};
       return null; // nothing to say
     }
-    if(act!==null && act<0) return {key:'broken', label:'broken', cls:'r',
+    if(act!==null && act<0) return {key:'broken', label:'incorrect count', cls:'r',
       advice:'Ending count is higher than start + purchases — recount, or enter the missing delivery.'};
     if(act===0 && (tgt||0)>0) return {key:'suspect', label:'suspect', cls:'a',
       advice:'Zero usage recorded but sales required '+tgt+' — check the counts.'};
@@ -1198,7 +1198,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     const actd = rows.reduce((s,r)=>s+(r.actd||0),0);
     const tgtd = rows.reduce((s,r)=>s+(r.tgtd||0),0);
     const vard = actd - tgtd;
-    if(actd<=0) return {sn, status:'broken', label:'broken', cls:'r', actd, tgtd, vard, eff:null, rows};
+    if(actd<=0) return {sn, status:'broken', label:'incorrect count', cls:'r', actd, tgtd, vard, eff:null, rows};
     const eff = tgtd/actd;
     let cls='g';
     if(eff<0.80||eff>1.25) cls='r';
@@ -1318,7 +1318,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
       const missTgt = sd.tgtd||0;
       h += `<div class="slist"><div class="fnocount">
         <div style="font-size:30px">✕</div>
-        <div class="big">${sd.status==='broken'?'Count is broken':'No count submitted'}</div>
+        <div class="big">${sd.status==='broken'?'Incorrect count':'No count submitted'}</div>
         <div class="sub">${sd.status==='broken'
           ? 'Total recorded usage is negative — inventory can’t grow on its own.<br>Beginning counts or purchases are missing.'
           : (missTgt>0 ? 'Sales expected '+dollar(missTgt)+' of food usage — nothing was recorded.' : 'No data was submitted for this date.')}</div>
