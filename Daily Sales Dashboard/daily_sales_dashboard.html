@@ -187,7 +187,7 @@ svg{width:100%;display:block;overflow:visible}
 .fb-g{background:rgba(95,207,128,.14);color:var(--grn)}
 .fb-a{background:rgba(212,162,58,.16);color:var(--gold2)}
 .fb-r{background:rgba(232,115,107,.14);color:var(--red)}
-.frow{display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;padding:13px 16px;
+.frow{display:grid;grid-template-columns:auto 1fr auto;gap:12px;padding:13px 16px;
   align-items:center;border-bottom:1px solid rgba(38,52,43,.5);cursor:pointer;transition:.12s}
 .frow:last-child{border-bottom:none}
 .frow:active{background:rgba(255,255,255,.02)}
@@ -1190,22 +1190,28 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     return null;
   }
 
-  // Store day summary
+  // Store day summary — scored on items on target, not netted dollars
   function storeDay(sn, dt) {
     const rows = FOOD.filter(r=>r.sn===sn && r.dt===dt);
-    if(!rows.length) return {sn, status:'absent', label:'no count', cls:'r', actd:0, tgtd:0, vard:null, eff:null, rows:[]};
+    if(!rows.length) return {sn, status:'absent', label:'no count', cls:'r', actd:0, tgtd:0,
+      vard:null, eff:null, onT:0, totI:0, ratio:0, rows:[]};
+
+    // Count items on target. Errors can't cancel each other here.
+    let onT=0, totI=0;
+    rows.forEach(r=>{ const f=classifyItem(r); if(!f) return; totI++; if(f.key==='good') onT++; });
+
+    const tgtd = rows.reduce((s,r)=>s+(r.tgtd||0),0);
     const counted = rows.some(r=>(r.beg||0)!==0||(r.pur||0)!==0||(r.end||0)!==0);
     if(!counted) return {sn, status:'nocount', label:'no count', cls:'r', actd:0,
-      tgtd:rows.reduce((s,r)=>s+(r.tgtd||0),0), vard:null, eff:null, rows};
+      tgtd, vard:null, eff:null, onT:0, totI, ratio:0, rows};
+
     const actd = rows.reduce((s,r)=>s+(r.actd||0),0);
-    const tgtd = rows.reduce((s,r)=>s+(r.tgtd||0),0);
     const vard = actd - tgtd;
-    if(actd<=0) return {sn, status:'broken', label:'incorrect count', cls:'r', actd, tgtd, vard, eff:null, rows};
-    const eff = tgtd/actd;
-    let cls='g';
-    if(eff<0.80||eff>1.25) cls='r';
-    else if(eff<0.90||eff>1.05) cls='a';
-    return {sn, status:'counted', label:pct(eff), cls, actd, tgtd, vard, eff, rows};
+    const eff  = actd>0 ? tgtd/actd : null;
+    const ratio = totI ? onT/totI : 0;
+    const cls = ratio>=0.70 ? 'g' : ratio>=0.40 ? 'a' : 'r';
+    return {sn, status: actd<=0 ? 'broken' : 'counted', label:`${onT}/${totI}`, cls,
+      actd, tgtd, vard, eff, onT, totI, ratio, rows};
   }
 
   // 7-day streak for a store, ending at date dt
@@ -1254,12 +1260,13 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     const totVar = totAct - totTgt;
     const effP = totAct>0 ? pct(totTgt/totAct) : '—';
 
-    // sort: absent/nocount/broken first, then by |var| desc
+    // sort: stores that didn't count first, then fewest items on target
     days.sort((a,b)=>{
-      const bad = d => d.status!=='counted' ? 1 : 0;
-      if(bad(b)!==bad(a)) return bad(b)-bad(a);
-      if(a.status!=='counted') return 0;
-      return Math.abs(b.vard) - Math.abs(a.vard);
+      const noData = d => (d.status==='absent'||d.status==='nocount') ? 1 : 0;
+      if(noData(b)!==noData(a)) return noData(b)-noData(a);
+      if(noData(a)) return a.sn.localeCompare(b.sn);
+      if(a.ratio!==b.ratio) return a.ratio-b.ratio;
+      return b.totI-a.totI;
     });
 
     let h = `<div class="rhead">
@@ -1279,16 +1286,14 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
       <div class="frow" style="cursor:default;padding-top:0;padding-bottom:9px">
         <span style="width:9px"></span>
         <span class="fsn" style="font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em;font-family:'Spline Sans Mono',monospace;font-weight:400">Store</span>
-        <span class="feff" style="font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em">Efficiency</span>
-        <span class="fvar" style="font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em">Vs Target</span>
+        <span class="feff" style="font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em">Items on target</span>
       </div>
     </div>`;
     days.forEach(d=>{
       h += `<div class="frow" data-sn="${d.sn}">
         <span class="fdot fd-${d.cls}"></span>
         <span class="fsn">${d.sn}</span>
-        <span class="feff" style="color:${d.status!=='counted'?'var(--red)':d.cls==='r'?'var(--red)':d.cls==='a'?'var(--gold2)':'var(--grn)'}">${d.label}</span>
-        <span class="fvar" style="color:${d.vard===null?'var(--mut2)':d.cls==='r'?'var(--red)':d.cls==='a'?'var(--gold2)':'var(--grn)'}">${d.vard===null?'—':signDollar(d.vard)}</span>
+        <span class="feff" style="color:${d.cls==='r'?'var(--red)':d.cls==='a'?'var(--gold2)':'var(--grn)'}">${d.label}</span>
       </div>`;
     });
     h += `</div>`;
@@ -1314,7 +1319,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     let h = `<div class="fback" id="fBack">← All stores</div>`;
     h += `<div class="rhead">
       <div><div class="rtitle">${F.store}</div>
-      <div class="rscope">${sd.status==='counted'?'Efficiency '+sd.label:sd.label}</div></div>
+      <div class="rscope">${(sd.status==='absent'||sd.status==='nocount')?'No count':sd.onT+' of '+sd.totI+' items on target'}</div></div>
       <div class="rmeta">${fmtDFull(F.date)}</div>
     </div>`;
 
