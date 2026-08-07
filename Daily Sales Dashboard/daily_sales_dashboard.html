@@ -14,15 +14,32 @@
   --ink:#eef3ee;--mut:#8fa394;--mut2:#5f7065;
   --gold:#d4a23a;--gold2:#e8bd5a;
   --grn:#5fcf80;--red:#e8736b;--red2:#cf5268;
+  --tint-gold:rgba(212,162,58,.16);--tint-grn:rgba(95,207,128,.16);
+  --tint-red:rgba(232,115,107,.14);--tint-red2:rgba(207,82,104,.16);
+  --glow1:rgba(212,162,58,.06);--glow2:rgba(95,207,128,.04);
+  --rowhov:rgba(212,162,58,.05);--rowact:rgba(255,255,255,.02);
+  --scheme:dark;
   --r:16px;
+}
+:root[data-theme="light"]{
+  --bg:#f2f5ef;--bg2:#ffffff;--card:#ffffff;--card2:#f6f8f3;
+  --line:#e0e6da;--line2:#c8d2c1;
+  --ink:#16201a;--mut:#5b6b5f;--mut2:#67756a;
+  --gold:#9a7112;--gold2:#7d5c0d;
+  --grn:#237f42;--red:#c03d34;--red2:#a02845;
+  --tint-gold:rgba(154,113,18,.13);--tint-grn:rgba(35,127,66,.12);
+  --tint-red:rgba(192,61,52,.11);--tint-red2:rgba(160,40,69,.11);
+  --glow1:rgba(212,162,58,.10);--glow2:rgba(95,207,128,.07);
+  --rowhov:rgba(154,113,18,.06);--rowact:rgba(0,0,0,.03);
+  --scheme:light;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg);color:var(--ink);font-family:'Spline Sans',sans-serif;-webkit-font-smoothing:antialiased}
 body{
   min-height:100vh;
   background:
-    radial-gradient(120% 60% at 100% 0%,rgba(212,162,58,.06),transparent 60%),
-    radial-gradient(90% 50% at 0% 100%,rgba(95,207,128,.04),transparent 55%),
+    radial-gradient(120% 60% at 100% 0%,var(--glow1),transparent 60%),
+    radial-gradient(90% 50% at 0% 100%,var(--glow2),transparent 55%),
     var(--bg);
 }
 .shell{max-width:560px;margin:0 auto;min-height:100vh;padding-bottom:40px}
@@ -42,7 +59,7 @@ header{padding:22px 18px 14px;position:sticky;top:0;z-index:50;
   background:linear-gradient(180deg,var(--bg) 70%,rgba(14,20,16,0));
   backdrop-filter:blur(2px)}
 .brand{display:flex;align-items:center;gap:10px}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(212,162,58,.15)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px var(--tint-gold)}
 .brand h1{font-family:'Fraunces',serif;font-weight:600;font-size:19px;letter-spacing:-.01em}
 .brand .sub{font-size:11px;color:var(--mut2);font-family:'Spline Sans Mono',monospace;
   margin-left:auto;text-transform:uppercase;letter-spacing:.08em}
@@ -60,14 +77,14 @@ header{padding:22px 18px 14px;position:sticky;top:0;z-index:50;
   cursor:pointer;transition:.15s;font-family:inherit}
 .seg button:active{transform:scale(.97)}
 .seg button.on{background:var(--card2);color:var(--ink);border-color:var(--gold);
-  box-shadow:inset 0 0 0 1px rgba(212,162,58,.3)}
+  box-shadow:inset 0 0 0 1px var(--tint-gold)}
 select{width:100%;background:var(--bg2);color:var(--ink);border:1px solid var(--line2);
   border-radius:10px;padding:11px 12px;font-size:13.5px;font-family:inherit;appearance:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%238fa394' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 12px center}
 .date-inp{width:100%;background:var(--bg2);color:var(--ink);border:1px solid var(--line2);
   border-radius:10px;padding:11px 12px;font-size:13px;font-family:'Spline Sans Mono',monospace;
-  color-scheme:dark}
+  color-scheme:var(--scheme)}
 .date-inp:focus{outline:none;border-color:var(--gold)}
 .range-row{display:flex;gap:8px;align-items:center}
 .range-row select,.range-row .date-inp{flex:1}
@@ -86,7 +103,7 @@ select{width:100%;background:var(--bg2);color:var(--ink);border:1px solid var(--
 .hero{background:linear-gradient(135deg,var(--card2),var(--card));border:1px solid var(--line);
   border-radius:var(--r);padding:18px;margin-bottom:12px;position:relative;overflow:hidden}
 .hero:before{content:"";position:absolute;right:-30px;top:-30px;width:120px;height:120px;
-  background:radial-gradient(circle,rgba(212,162,58,.12),transparent 70%);border-radius:50%}
+  background:radial-gradient(circle,var(--tint-gold),transparent 70%);border-radius:50%}
 .hero .lab{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.1em;
   font-family:'Spline Sans Mono',monospace}
 .hero .val{font-family:'Fraunces',serif;font-size:36px;font-weight:600;margin-top:6px;letter-spacing:-.02em}
@@ -108,7 +125,7 @@ select{width:100%;background:var(--bg2);color:var(--ink);border:1px solid var(--
   display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;font-size:12px}
 .chart-readout.show{height:auto;min-height:22px;opacity:1;margin-bottom:6px}
 .ro-period{font-family:'Spline Sans Mono',monospace;font-size:11px;color:var(--gold2);
-  background:rgba(212,162,58,.12);padding:2px 8px;border-radius:6px;font-weight:600}
+  background:var(--tint-gold);padding:2px 8px;border-radius:6px;font-weight:600}
 .ro-row{display:inline-flex;align-items:center;gap:5px;color:var(--mut);font-size:12px}
 .ro-row b{color:var(--ink);font-family:'Spline Sans Mono',monospace;font-weight:600}
 .svgwrap{touch-action:pan-y}
@@ -116,6 +133,19 @@ select{width:100%;background:var(--bg2);color:var(--ink);border:1px solid var(--
   text-align:center;margin-top:8px;opacity:.6}
 svg{width:100%;display:block;overflow:visible}
 .ax{fill:var(--mut2);font-size:9px;font-family:'Spline Sans Mono',monospace}
+.bar-rect{fill:var(--gold)}
+.tline{stroke:var(--gold)}
+.tdot{fill:var(--gold)}
+.vlab{fill:var(--gold2);stroke:var(--bg)}
+.agtop{stop-color:var(--gold);stop-opacity:.22}
+.agbot{stop-color:var(--gold);stop-opacity:0}
+
+/* Theme toggle */
+.themebtn{background:transparent;border:1px solid var(--line2);color:var(--mut);
+  width:29px;height:29px;border-radius:9px;cursor:pointer;font-size:13px;line-height:1;
+  display:flex;align-items:center;justify-content:center;margin-left:10px;transition:.15s;font-family:inherit}
+.themebtn:hover{color:var(--gold2);border-color:var(--gold)}
+.themebtn:active{transform:scale(.92)}
 
 /* Multi-select dropdown */
 .msd-wrap{position:relative}
@@ -184,15 +214,15 @@ svg{width:100%;display:block;overflow:visible}
 .fd-g{background:var(--grn)}.fd-a{background:var(--gold)}.fd-r{background:var(--red)}
 .fbadge{font-size:10.5px;padding:3px 9px;border-radius:999px;font-family:'Spline Sans Mono',monospace;
   font-weight:600;white-space:nowrap}
-.fb-g{background:rgba(95,207,128,.14);color:var(--grn)}
-.fb-a{background:rgba(212,162,58,.16);color:var(--gold2)}
-.fb-r{background:rgba(232,115,107,.14);color:var(--red)}
-.fb-r2{background:rgba(207,82,104,.16);color:var(--red2)}
+.fb-g{background:var(--tint-grn);color:var(--grn)}
+.fb-a{background:var(--tint-gold);color:var(--gold2)}
+.fb-r{background:var(--tint-red);color:var(--red)}
+.fb-r2{background:var(--tint-red2);color:var(--red2)}
 .frow{display:grid;grid-template-columns:auto 1fr auto 12px;gap:12px;padding:13px 16px;
   align-items:center;border-bottom:1px solid rgba(38,52,43,.5);cursor:pointer;transition:.12s}
 .frow:last-child{border-bottom:none}
-.frow:active{background:rgba(255,255,255,.02)}
-.frow[data-sn]:hover{background:rgba(212,162,58,.05)}
+.frow:active{background:var(--rowact)}
+.frow[data-sn]:hover{background:var(--rowhov)}
 .fchev{color:var(--mut2);font-size:15px;line-height:1;text-align:right;transition:.14s}
 .frow[data-sn]:hover .fchev{color:var(--gold2);transform:translateX(2px)}
 .frow .fsn{font-size:13.5px;font-weight:500}
@@ -235,9 +265,9 @@ svg{width:100%;display:block;overflow:visible}
 .stkday{font-size:9px;color:var(--mut2);font-family:'Spline Sans Mono',monospace;letter-spacing:.04em}
 .stk{width:25px;height:25px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;
   font-size:11.5px;font-weight:600;font-family:'Spline Sans Mono',monospace}
-.stk-g{background:rgba(95,207,128,.16);color:var(--grn)}
-.stk-a{background:rgba(212,162,58,.18);color:var(--gold2)}
-.stk-r{background:rgba(232,115,107,.16);color:var(--red)}
+.stk-g{background:var(--tint-grn);color:var(--grn)}
+.stk-a{background:var(--tint-gold);color:var(--gold2)}
+.stk-r{background:var(--tint-red);color:var(--red)}
 .stk-x{background:var(--bg2);color:var(--mut2)}
 .fcolhead{position:sticky;top:0;z-index:40;background:var(--card);
   border-radius:var(--r) var(--r) 0 0;border-bottom:1px solid var(--line)}
@@ -271,6 +301,10 @@ svg{width:100%;display:block;overflow:visible}
 }
 @media(min-width:1240px){.shell{grid-template-columns:390px 1fr}}
 </style>
+<script>
+/* Applied before first paint so the page never flashes the wrong theme. */
+try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}
+</script>
 </head>
 <body>
 
@@ -287,6 +321,7 @@ svg{width:100%;display:block;overflow:visible}
     <span class="dot"></span>
     <h1>ACE Brands</h1>
     <span class="sub" id="brandSub">Daily Sales</span>
+    <button class="themebtn" id="themeBtn" aria-label="Switch between light and dark">☀</button>
   </div>
   <div class="tagline" id="tagline">Daily Sales Dashboard</div>
   <div class="seg" id="viewSwitch" style="margin-top:14px">
@@ -427,9 +462,9 @@ const APPS_URL = 'https://script.google.com/macros/s/AKfycbxodxx9DHMd753fiJwMQKt
     document.getElementById('loading').innerHTML =
       `<div style="text-align:center;padding:32px;max-width:320px">
         <div style="font-size:28px;margin-bottom:14px">⚠</div>
-        <div style="color:#eef3ee;font-size:15px;font-weight:600;margin-bottom:8px">Could not load data</div>
-        <div style="color:#8fa394;font-size:12px;font-family:monospace;margin-bottom:16px">${e.message}</div>
-        <div style="color:#5f7065;font-size:11.5px;line-height:1.7">Make sure the Apps Script URL is deployed and the sheet is accessible.</div>
+        <div style="color:var(--ink);font-size:15px;font-weight:600;margin-bottom:8px">Could not load data</div>
+        <div style="color:var(--mut);font-size:12px;font-family:monospace;margin-bottom:16px">${e.message}</div>
+        <div style="color:var(--mut2);font-size:11.5px;line-height:1.7">Make sure the Apps Script URL is deployed and the sheet is accessible.</div>
       </div>`;
   }
 })();
@@ -826,8 +861,8 @@ function initDashboard() {
         const cx=xs(i);
         const bH=Math.max(2,(H-padT-padB)*(v/(mx||1)));
         const bY=H-padB-bH;
-        paths+=`<rect x="${(cx-barW/2).toFixed(1)}" y="${bY.toFixed(1)}" width="${barW.toFixed(1)}" height="${bH.toFixed(1)}" rx="3" fill="#d4a23a" opacity=".82" class="bar-rect" data-i="${i}"/>`;
-        if(v>0) vlabs+=`<text x="${cx.toFixed(1)}" y="${(bY-5).toFixed(1)}" text-anchor="middle" font-family="'Spline Sans Mono',monospace" font-size="9.5" font-weight="600" fill="#e8bd5a" stroke="#0e1410" stroke-width="2.2" paint-order="stroke">${fmtChart(v,metric)}</text>`;
+        paths+=`<rect x="${(cx-barW/2).toFixed(1)}" y="${bY.toFixed(1)}" width="${barW.toFixed(1)}" height="${bH.toFixed(1)}" rx="3" opacity=".82" class="bar-rect" data-i="${i}"/>`;
+        if(v>0) vlabs+=`<text x="${cx.toFixed(1)}" y="${(bY-5).toFixed(1)}" text-anchor="middle" font-family="'Spline Sans Mono',monospace" font-size="9.5" font-weight="600" class="vlab" stroke-width="2.2" paint-order="stroke">${fmtChart(v,metric)}</text>`;
         // for weekly bars: only label W1 entries; for short charts label all
         const showLab = n<=8 || labels[i].endsWith('W1');
         if(showLab) xlabs+=`<text class="ax" x="${cx.toFixed(1)}" y="${H-8}" text-anchor="middle">${labels[i]}</text>`;
@@ -843,8 +878,8 @@ function initDashboard() {
         const area=d+`L ${xs(n-1).toFixed(1)} ${(H-padB).toFixed(1)} L ${xs(0).toFixed(1)} ${(H-padB).toFixed(1)} Z`;
         paths+=`<path d="${area}" fill="url(#ag)"/>`;
       }
-      paths+=`<path d="${d}" fill="none" stroke="#d4a23a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-      if(n<=20) values.forEach((_,i)=>{ paths+=`<circle cx="${xs(i)}" cy="${ys(values[i])}" r="2.3" fill="#d4a23a"/>`; });
+      paths+=`<path d="${d}" fill="none" class="tline" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+      if(n<=20) values.forEach((_,i)=>{ paths+=`<circle cx="${xs(i)}" cy="${ys(values[i])}" r="2.3" class="tdot"/>`; });
       // value labels: all if ≤8, else first/last/min/max
       const pts=values.map((v,i)=>({v,i}));
       const idxs=pts.length<=8?pts.map(p=>p.i):[...new Set([
@@ -854,7 +889,7 @@ function initDashboard() {
       ])];
       idxs.forEach(i=>{
         const v=values[i],y=ys(v),dy=y<padT+16?14:-7;
-        vlabs+=`<text x="${xs(i).toFixed(1)}" y="${(y+dy).toFixed(1)}" text-anchor="middle" font-family="'Spline Sans Mono',monospace" font-size="9.5" font-weight="600" fill="#e8bd5a" stroke="#0e1410" stroke-width="2.4" paint-order="stroke" style="stroke-linejoin:round">${fmtChart(v,metric)}</text>`;
+        vlabs+=`<text x="${xs(i).toFixed(1)}" y="${(y+dy).toFixed(1)}" text-anchor="middle" font-family="'Spline Sans Mono',monospace" font-size="9.5" font-weight="600" class="vlab" stroke-width="2.4" paint-order="stroke" style="stroke-linejoin:round">${fmtChart(v,metric)}</text>`;
       });
       const step=Math.ceil(n/7);
       labels.forEach((lab,i)=>{ if(i%step===0||i===n-1) xlabs+=`<text class="ax" x="${xs(i).toFixed(1)}" y="${H-8}" text-anchor="middle">${lab}</text>`; });
@@ -873,11 +908,11 @@ function initDashboard() {
       <div class="svgwrap">
       <svg id="trendSvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;aspect-ratio:${W}/${H}">
         <defs><linearGradient id="ag" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stop-color="#d4a23a" stop-opacity=".22"/>
-          <stop offset="1" stop-color="#d4a23a" stop-opacity="0"/>
+          <stop offset="0" class="agtop"/>
+          <stop offset="1" class="agbot"/>
         </linearGradient></defs>
         ${paths}${xlabs}${vlabs}
-        <line id="scrubLine" x1="0" y1="${padT}" x2="0" y2="${H-padB}" stroke="#fff" stroke-width="1" stroke-opacity="0" stroke-dasharray="2 2"/>
+        <line id="scrubLine" x1="0" y1="${padT}" x2="0" y2="${H-padB}" stroke="var(--ink)" stroke-width="1" stroke-opacity="0" stroke-dasharray="2 2"/>
         <g id="scrubDots"></g>
       </svg></div>
       <div class="scrub-hint">Drag across the chart to read values</div>
@@ -1019,7 +1054,7 @@ function initDashboard() {
     } else {
       const ln=$$('scrubLine');
       ln.setAttribute('x1',x);ln.setAttribute('x2',x);ln.setAttribute('stroke-opacity','.35');
-      $$('scrubDots').innerHTML=`<circle cx="${x}" cy="${ys(v)}" r="3.4" fill="#d4a23a" stroke="#0e1410" stroke-width="1.5"/>`;
+      $$('scrubDots').innerHTML=`<circle cx="${x}" cy="${ys(v)}" r="3.4" class="tdot" stroke="var(--bg)" stroke-width="1.5"/>`;
     }
     $$('readout').innerHTML=`<span class="ro-period">${rawKeys[i]}</span><span class="ro-row"><b>${fmtHero(v,metric)}</b></span>`;
     $$('readout').classList.add('show');
@@ -1090,6 +1125,28 @@ function initDashboard() {
 
   render();
 }
+</script>
+
+<script>
+/* ── Theme toggle ────────────────────────────────────────────── */
+(() => {
+  const btn = document.getElementById('themeBtn');
+  const root = document.documentElement;
+  const apply = t => {
+    if(t==='light') root.setAttribute('data-theme','light');
+    else root.removeAttribute('data-theme');
+    btn.textContent = t==='light' ? '☾' : '☀';
+    btn.title = t==='light' ? 'Switch to dark' : 'Switch to light';
+  };
+  let cur = 'dark';
+  try { cur = localStorage.getItem('aceTheme')==='light' ? 'light' : 'dark'; } catch(e){}
+  apply(cur);
+  btn.addEventListener('click', () => {
+    cur = cur==='dark' ? 'light' : 'dark';
+    try { localStorage.setItem('aceTheme', cur); } catch(e){}
+    apply(cur);
+  });
+})();
 </script>
 
 <script>
