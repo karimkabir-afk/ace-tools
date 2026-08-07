@@ -300,6 +300,68 @@ svg{width:100%;display:block;overflow:visible}
   .chart svg{max-height:300px}
 }
 @media(min-width:1240px){.shell{grid-template-columns:390px 1fr}}
+
+/* ── Print ──────────────────────────────────────────────────────
+   Drops the app chrome and prints the report as a document.       */
+.printhead,.printfoot{display:none}
+@media print{
+  /* Force paper colours regardless of the on-screen theme. */
+  :root,:root[data-theme="light"]{
+    --bg:#fff;--bg2:#fff;--card:#fff;--card2:#fff;
+    --line:#ddd;--line2:#bbb;
+    --ink:#1a1a1a;--mut:#3f3f3f;--mut2:#666;
+    --gold:#8a6510;--gold2:#8a6510;
+    --grn:#1a6b34;--red:#b3261e;--red2:#8c1d4a;
+    --tint-gold:transparent;--tint-grn:transparent;
+    --tint-red:transparent;--tint-red2:transparent;
+    --glow1:transparent;--glow2:transparent;
+    --rowhov:transparent;--rowact:transparent;
+  }
+  @page{margin:12mm}
+  html,body{background:#fff!important}
+  body{background-image:none!important}
+
+  /* Screen-only furniture */
+  .controls,.themebtn,.fchev,.fback,.printhide,.scrub-hint,.chart-readout,
+  #loading,.chip-actions{display:none!important}
+
+  .shell{display:block!important;max-width:none!important;padding:0!important}
+  .main{padding:0!important;min-width:0}
+  .results{padding:0!important}
+  .rhead{margin:0 0 12px!important}
+  .rtitle{font-size:22px}
+
+  .printhead{display:flex!important;justify-content:space-between;align-items:baseline;
+    border-bottom:1.5px solid #1a1a1a;padding-bottom:8px;margin-bottom:15px}
+  .printfoot{display:flex!important;justify-content:space-between;gap:16px;margin-top:13px;
+    padding-top:7px;border-top:1px solid #ddd;
+    font-family:'Spline Sans Mono',monospace;font-size:8.5px;color:#777}
+
+  /* Flatten cards into ruled blocks */
+  .hero,.kpi,.slist,.chart,.ttable,.panel{box-shadow:none!important}
+  .hero{background:none!important;border:1px solid #ddd;padding:11px 14px!important}
+  .hero:before{display:none}
+  .kpi{border:1px solid #ddd;padding:9px 12px}
+  .kpi .v{font-size:16px}
+  .kpis{margin-bottom:12px;gap:8px}
+  .slist,.ttable,.chart{border:1px solid #ddd}
+  .fcolhead{position:static!important}
+
+  /* Badges print as plain coloured words — no ink-heavy pills */
+  .fbadge{background:transparent!important;padding:0!important;font-weight:600}
+  .stk{border:1px solid #bbb;background:transparent!important}
+
+  /* Tighter rows on paper — screen touch targets aren't needed */
+  .frow,.srow,.trow{padding:6px 14px!important;transition:none!important}
+  .firow .fihead{padding:6px 14px!important}
+  .pl-h{padding-top:9px!important;padding-bottom:7px!important}
+  .stk{width:20px;height:20px;font-size:10px}
+
+  /* Keep rows and blocks whole across page breaks */
+  .frow,.firow,.srow,.trow{break-inside:avoid;page-break-inside:avoid}
+  .kpis,.hero,.chart{break-inside:avoid;page-break-inside:avoid}
+  .fiexp{display:none!important}
+}
 </style>
 <script>
 /* Applied before first paint so the page never flashes the wrong theme. */
@@ -427,8 +489,16 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
 </aside>
 
 <main class="main">
+  <div class="printhead">
+    <span style="font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:#1a1a1a">ACE Brands</span>
+    <span id="phReport" style="font-family:'Spline Sans Mono',monospace;font-size:10px;letter-spacing:.09em;color:#555">DAILY SALES</span>
+  </div>
   <div class="results" id="results"></div>
   <div class="results" id="foodResults" style="display:none"></div>
+  <div class="printfoot">
+    <span id="phLegend"></span>
+    <span id="phStamp"></span>
+  </div>
 </main>
 </div>
 
@@ -1171,6 +1241,16 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
   let ALL_STORES = [];      // every store ever seen
   const F = { date:null, store:null, open:new Set(), loaded:false, loading:false };
 
+  /* ── Print header/footer text ───────────────────────────────── */
+  function setPrintMeta(isSales) {
+    $('phReport').textContent = isSales ? 'DAILY SALES' : 'DAILY FOOD COUNT';
+    $('phLegend').textContent = isSales ? ''
+      : 'An item is on target at 90–105% efficiency (Target $ ÷ Actual $) · sorted worst first';
+    const d = new Date();
+    const MM = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    $('phStamp').textContent = 'Printed '+MM[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
+  }
+
   /* ── View switching ─────────────────────────────────────────── */
   let VIEW = 'sales';
   $('viewSwitch').addEventListener('click', e => {
@@ -1185,6 +1265,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     $('foodResults').style.display = sales?'none':'';
     $('brandSub').textContent = sales?'Daily Sales':'Daily Food';
     $('tagline').textContent  = sales?'Daily Sales Dashboard':'Daily Food Count Dashboard';
+    setPrintMeta(sales);
     if(!sales && !F.loaded && !F.loading) loadFood();
   });
 
@@ -1365,7 +1446,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     </div>`;
 
     h += `<div class="slist" style="overflow:visible"><div class="fcolhead">
-      <div class="pl-h" style="border-bottom:none;padding-bottom:8px"><h3>Stores — worst first</h3><span class="tag">tap a store</span></div>
+      <div class="pl-h" style="border-bottom:none;padding-bottom:8px"><h3>Stores — worst first</h3><span class="tag printhide">tap a store</span></div>
       <div class="frow" style="cursor:default;padding-top:0;padding-bottom:9px">
         <span style="width:9px"></span>
         <span class="fsn" style="font-size:9.5px;color:var(--mut2);text-transform:uppercase;letter-spacing:.07em;font-family:'Spline Sans Mono',monospace;font-weight:400">Store</span>
@@ -1462,7 +1543,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     if(!items.length) return '';
 
     let h = `<div class="slist" style="overflow:visible"><div class="fcolhead">
-      <div class="pl-h" style="border-bottom:none;padding-bottom:8px"><h3>Items</h3><span class="tag">tap for detail</span></div>
+      <div class="pl-h" style="border-bottom:none;padding-bottom:8px"><h3>Items</h3><span class="tag printhide">tap for detail</span></div>
       <div class="figrid-h">
         <span>Item</span><span>Used</span><span>Target</span><span>Efficiency</span><span>Status</span>
       </div>
@@ -1497,6 +1578,8 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     h += `</div>`;
     return h;
   }
+
+  setPrintMeta(true); // sales is the default view
 
   /* ── Date nav wiring ────────────────────────────────────────── */
   $('fdPrev').addEventListener('click', ()=>{
