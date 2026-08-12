@@ -278,7 +278,7 @@ svg{width:100%;display:block;overflow:visible}
 /* Labor view */
 .lbwrap{overflow-x:auto}
 .lbrow,.lbhead{display:grid;gap:0;align-items:center;
-  grid-template-columns:minmax(120px,1.4fr) 74px 74px 74px 54px 54px 54px 62px 62px 62px}
+  grid-template-columns:minmax(104px,1.3fr) 72px 72px 70px 50px 50px 48px 60px 60px 60px 100px}
 .lbrow{padding:0;border-bottom:1px solid rgba(38,52,43,.5);cursor:pointer;transition:.12s}
 .lbrow:last-child{border-bottom:none}
 .lbrow:hover{background:var(--rowhov)}
@@ -291,6 +291,9 @@ svg{width:100%;display:block;overflow:visible}
 .lbrow .lbname{font-family:'Spline Sans',sans-serif;font-size:13px;font-weight:500;
   display:flex;flex-direction:column;gap:2px}
 .lbrow .lbdrv{font-family:'Spline Sans Mono',monospace;font-size:9.5px;color:var(--mut2);font-weight:400}
+.lbdrv-inline{display:none}
+.lbdrvcol{font-family:'Spline Sans Mono',monospace;font-size:9.5px;line-height:1.35;text-align:right}
+@media(max-width:820px){.lbdrv-inline{display:block}}
 .lbsep{box-shadow:inset 1px 0 0 var(--line)}
 .lb-g{color:var(--grn)}.lb-a{color:var(--gold2)}.lb-r{color:var(--red)}.lb-m{color:var(--mut2)}
 .lbtot{border-top:1.5px solid var(--line2);font-weight:600}
@@ -1415,12 +1418,13 @@ const LABOR = (() => {
         <span class="lbhide">Proj Sales</span><span class="lbhide">Actual</span><span class="lbhide">Diff</span>
         <span class="lbhide lbsep">Sched</span><span class="lbhide">Actual</span><span class="lbhide">Diff</span>
         <span class="lbhide lbsep">Sched %</span><span>Actual %</span><span>Diff</span>
+        <span class="lbhide lbsep">Driver</span>
       </div></div>`;
 
     rows.forEach(o=>{
       const c='lb-'+o.cls;
       h += `<div class="lbrow" data-sid="${o.sid}">
-        <span class="lbname">${o.name}${o.driver?`<span class="lbdrv ${o.cls==='r'?'lb-r':o.cls==='a'?'lb-a':''}">${o.driver}</span>`:''}</span>
+        <span class="lbname">${o.name}${o.driver?`<span class="lbdrv lbdrv-inline ${o.cls==='r'?'lb-r':o.cls==='a'?'lb-a':''}">${o.driver}</span>`:''}</span>
         <span class="lbhide lb-m">${money(o.fc)}</span>
         <span class="lbhide">${money(o.sa)}</span>
         <span class="lbhide ${o.dS<0?'lb-r':'lb-g'}">${sgn(o.dS)}</span>
@@ -1430,6 +1434,7 @@ const LABOR = (() => {
         <span class="lbhide lbsep lb-m">${o.noSchedule?'—':pctS(o.schP)}</span>
         <span>${pctS(o.actP)}</span>
         <span class="${c}">${o.noSchedule?'—':sgnP(o.dP)}</span>
+        <span class="lbhide lbsep lbdrvcol ${o.cls==='r'?'lb-r':o.cls==='a'?'lb-a':'lb-m'}">${o.driver||'—'}</span>
       </div>`;
     });
 
@@ -1441,6 +1446,7 @@ const LABOR = (() => {
         <span class="lbhide ${T.ah-T.sh>0?'lb-r':'lb-g'}">${sgnH(T.ah-T.sh)}</span>
         <span class="lbhide lbsep lb-m">${pctS(TschP)}</span><span>${pctS(TactP)}</span>
         <span class="${TactP-TschP<=1?'lb-g':TactP-TschP<=3?'lb-a':'lb-r'}">${sgnP(TactP-TschP)}</span>
+        <span class="lbhide lbsep"></span>
       </div></div>`;
 
     const R=$('laborResults'); R.innerHTML=h;
