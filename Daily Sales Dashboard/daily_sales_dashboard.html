@@ -544,7 +544,16 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
     <button data-r="wtd">WTD</button>
     <button data-r="last7">Last 7</button>
     <button data-r="trailing4w">Trailing 4W</button>
+    <button data-r="period">Period</button>
+    <button data-r="periodweek">Period Wk</button>
     <button data-r="all">All data</button>
+  </div>
+
+  <div id="lbPeriodWrap" style="display:none;margin-top:10px">
+    <div class="chips" id="lbPeriodChips"></div>
+  </div>
+  <div id="lbPWWrap" style="display:none;margin-top:10px">
+    <div class="chips" id="lbPWChips"></div>
   </div>
 
   <span class="flabel">Sort</span>
@@ -1309,8 +1318,9 @@ const LABOR = (() => {
   const sgnP  = n => (n>=0?'+':'-')+Math.abs(n).toFixed(2)+'%';
   const sgnH  = n => (n>=0?'+':'-')+Math.abs(n).toFixed(0);
 
-  let D=null, DATES=[], STORES=[], byStore={};
-  const S = { scope:'all', range:'yesterday', sort:'store', store:null, loaded:false, loading:false };
+  let D=null, DATES=[], STORES=[], byStore={}, PERIODS=[], PWEEKS=[];
+  const S = { scope:'all', range:'yesterday', sort:'store', store:null,
+              selP:new Set(), selPW:new Set(), loaded:false, loading:false };
 
   /* ── Load ─────────────────────────────────────────────────── */
   async function load() {
@@ -1318,7 +1328,7 @@ const LABOR = (() => {
     $('laborResults').innerHTML = `<div class="empty"><div class="spinner" style="margin:0 auto 14px"></div>Loading labor data…</div>`;
     try {
       const c=new AbortController(); const t=setTimeout(()=>c.abort(),90000);
-      let resp; try { resp=await fetch(LABOR_URL,{redirect:'follow',signal:c.signal}); }
+      let resp; try { resp=await fetch(LABOR_URL,{redirect:'follow',cache:'no-store',signal:c.signal}); }
       catch(e){ clearTimeout(t); throw new Error(e.name==='AbortError'?'Request timed out.':e.message); }
       clearTimeout(t);
       if(!resp.ok) throw new Error('HTTP '+resp.status);
@@ -1327,6 +1337,14 @@ const LABOR = (() => {
       STORES = D.stores;
       DATES = [...new Set(D.days.map(r=>r.dt))].sort();
       byStore = {}; STORES.forEach(s=>byStore[s.id]=s);
+      D.cal = D.cal || {};
+      const pk=new Set(), wk=new Set();
+      Object.values(D.cal).forEach(c=>{ pk.add(c.py+'-'+c.pn); wk.add(c.py+'-'+c.pn+'-'+c.wn); });
+      PERIODS = [...pk].map(k=>k.split('-').map(Number)).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+      PWEEKS  = [...wk].map(k=>k.split('-').map(Number)).sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]);
+      if(PERIODS.length) S.selP  = new Set([PERIODS[PERIODS.length-1].join('-')]);
+      if(PWEEKS.length)  S.selPW = new Set([PWEEKS[PWEEKS.length-1].join('-')]);
+      buildChips();
       S.loaded=true; S.loading=false; render();
     } catch(e) {
       S.loading=false;
@@ -1335,9 +1353,35 @@ const LABOR = (() => {
     }
   }
 
+  /* ── Chips ────────────────────────────────────────────────── */
+  function buildChips(){
+    $('lbPeriodChips').innerHTML = PERIODS.map(([py,pn])=>{
+      const k=py+'-'+pn;
+      return `<button class="chip${S.selP.has(k)?' on':''}" data-k="${k}"><span class="cdot"></span>P${pn} ${py}</button>`;
+    }).join('');
+    $('lbPWChips').innerHTML = PWEEKS.map(([py,pn,wn])=>{
+      const k=py+'-'+pn+'-'+wn;
+      return `<button class="chip${S.selPW.has(k)?' on':''}" data-k="${k}"><span class="cdot"></span>P${pn}W${wn}</button>`;
+    }).join('');
+  }
+
   /* ── Range ────────────────────────────────────────────────── */
+  // Returns the set of dates in range (null = contiguous a..b)
   function range() {
     const last = DATES[DATES.length-1], end = pd(last);
+
+    if(S.range==='period' || S.range==='periodweek'){
+      const sel = S.range==='period' ? S.selP : S.selPW;
+      const keyOf = c => S.range==='period' ? c.py+'-'+c.pn : c.py+'-'+c.pn+'-'+c.wn;
+      const set = new Set(DATES.filter(d=>{ const c=D.cal[d]; return c && sel.has(keyOf(c)); }));
+      const arr = [...set].sort();
+      const names = [...sel].map(k=>k.split('-').map(Number))
+        .sort((x,y)=>x[0]-y[0]||x[1]-y[1]||((x[2]||0)-(y[2]||0)))
+        .map(v=>S.range==='period' ? `P${v[1]} ${v[0]}` : `P${v[1]}W${v[2]}`).join(' + ');
+      if(!arr.length) return {a:last,b:last,label:names||'None selected',set:new Set()};
+      return {a:arr[0], b:arr[arr.length-1], label:names, set};
+    }
+
     let start = new Date(end), label;
     if(S.range==='yesterday'){ label='Yesterday'; }
     else if(S.range==='wtd'){ const dow=(end.getDay()+6)%7; start.setDate(end.getDate()-dow); label='Week to date'; }
@@ -1345,16 +1389,16 @@ const LABOR = (() => {
     else if(S.range==='trailing4w'){ start.setDate(end.getDate()-27); label='Trailing 4 weeks'; }
     else { start=pd(DATES[0]); label='All data'; }
     let a=ds(start); if(a<DATES[0]) a=DATES[0];
-    const clamped = S.range!=='yesterday' && S.range!=='all' && a===DATES[0] && ds(start)<DATES[0];
-    return {a, b:last, label, clamped};
+    return {a, b:last, label, set:null};
   }
 
   /* ── Aggregate ────────────────────────────────────────────── */
   function agg() {
-    const {a,b} = range();
+    const {a,b,set} = range();
+    const inRange = d => set ? set.has(d) : (d>=a && d<=b);
     const m = {};
     D.days.forEach(r=>{
-      if(r.dt<a||r.dt>b) return;
+      if(!inRange(r.dt)) return;
       const st = byStore[r.sid]; if(!st) return;
       if(S.scope!=='all' && st.type!==S.scope) return;
       const o = m[r.sid] || (m[r.sid]={sid:r.sid,name:st.name,fc:0,sa:0,sh:0,ah:0,ot:0,sd:0,pay:0,nosch:0,days:0});
@@ -1386,10 +1430,19 @@ const LABOR = (() => {
     });
   }
 
+  /* Date line for the header. Shows a day count when the selection
+     skips days, so a gap can't be read as a continuous span. */
+  function metaLine(a,b,set){
+    const span = fmtD(a)+(a!==b?' – '+fmtD(b):'');
+    if(!set) return span;
+    const days = DATES.filter(d=>d>=a&&d<=b).length;
+    return span + (set.size<days ? ` · ${set.size} days` : '');
+  }
+
   /* ── Render: portfolio ────────────────────────────────────── */
   function render() {
     if(S.store) return renderStore();
-    const {a,b,label} = range();
+    const {a,b,label,set} = range();
     let rows = agg();
     rows.sort(S.sort==='worst' ? (x,y)=>y.dP-x.dP : (x,y)=>+x.sid-+y.sid);
 
@@ -1400,7 +1453,7 @@ const LABOR = (() => {
     const scopeLbl = S.scope==='all' ? `All ${rows.length} stores` : S.scope.replace(' Stores','').replace(' Acquisition','');
     let h = `<div class="rhead">
       <div><div class="rtitle">Labor</div><div class="rscope">${scopeLbl}</div></div>
-      <div class="rmeta">${label}<br>${fmtD(a)}${a!==b?' – '+fmtD(b):''}</div>
+      <div class="rmeta">${label}<br>${metaLine(a,b,set)}</div>
     </div>`;
 
     h += `<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
@@ -1458,14 +1511,15 @@ const LABOR = (() => {
 
   /* ── Render: store detail ─────────────────────────────────── */
   function renderStore() {
-    const {a,b,label} = range();
+    const {a,b,label,set} = range();
     const st = byStore[S.store];
     const o  = agg().find(x=>x.sid===S.store) ||
                {name:st.name,fc:0,sa:0,sh:0,ah:0,ot:0,sd:0,pay:0,schP:0,actP:0,dP:0,dH:0,noSchedule:true};
 
+    const inR = d => set ? set.has(d) : (d>=a && d<=b);
     const m={};
     D.emp.forEach(r=>{
-      if(r.sid!==S.store||r.dt<a||r.dt>b) return;
+      if(r.sid!==S.store || !inR(r.dt)) return;
       const e = m[r.n] || (m[r.n]={n:r.n,job:r.job,sh:0,ah:0,ot:0,pay:0,days:0});
       e.sh+=r.sh; e.ah+=r.ah; e.ot+=r.ot; e.pay+=r.pay; if(r.ah>0) e.days++;
       if(r.job) e.job=r.job;
@@ -1484,7 +1538,7 @@ const LABOR = (() => {
     let h = `<div class="fback" id="lbBack">← All stores</div>`;
     h += `<div class="rhead"><div><div class="rtitle">${o.name}</div>
       <div class="rscope">${o.noSchedule?'No schedule entered':pctS(o.actP)+' labor · '+sgnP(o.dP)+' vs plan'}</div></div>
-      <div class="rmeta">${label}<br>${fmtD(a)}${a!==b?' – '+fmtD(b):''}</div></div>`;
+      <div class="rmeta">${label}<br>${metaLine(a,b,set)}</div></div>`;
 
     h += `<div class="kpis" style="grid-template-columns:repeat(4,1fr)">
       <div class="kpi"><div class="lab">Sched Hrs</div><div class="v">${o.sh.toFixed(0)}</div></div>
@@ -1540,8 +1594,22 @@ const LABOR = (() => {
     });
   }
   seg('lbScope','scope',()=>S.store=null);
-  seg('lbRange','range');
+  seg('lbRange','range',()=>{
+    $('lbPeriodWrap').style.display = S.range==='period'     ? 'block':'none';
+    $('lbPWWrap').style.display     = S.range==='periodweek' ? 'block':'none';
+  });
   seg('lbSort','sort',()=>S.store=null);
+
+  function chipWire(id,setName){
+    $(id).addEventListener('click',e=>{
+      const b=e.target.closest('.chip'); if(!b) return;
+      const k=b.dataset.k, sel=S[setName];
+      if(sel.has(k)){ if(sel.size>1) sel.delete(k); } else sel.add(k);
+      buildChips(); if(S.loaded) render();
+    });
+  }
+  chipWire('lbPeriodChips','selP');
+  chipWire('lbPWChips','selPW');
 
   return { ensure(){ if(!S.loaded && !S.loading) load(); } };
 })();
