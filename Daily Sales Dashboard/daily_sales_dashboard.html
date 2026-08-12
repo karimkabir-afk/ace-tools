@@ -589,6 +589,24 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
     <button data-o="worst">Worst first</button>
   </div>
 
+  <span class="flabel">Trend Metric</span>
+  <div class="seg" id="lbMetric">
+    <button class="on" data-m="pct">Labor %</button>
+    <button data-m="hours">Hours</button>
+    <button data-m="ot">OT</button>
+  </div>
+
+  <span class="flabel">Trend Mode</span>
+  <div class="seg" id="lbTrend">
+    <button class="on" data-t="daily">Daily</button>
+    <button data-t="weekly">Weekly</button>
+    <button data-t="period">Period</button>
+    <button data-t="weekday">Weekday</button>
+  </div>
+  <div id="lbDowWrap" style="margin-top:10px">
+    <div class="chips" id="lbDowChips"></div>
+  </div>
+
   <div id="laborHint" style="margin-top:14px;font-size:11px;color:var(--mut2);line-height:1.6;font-family:'Spline Sans Mono',monospace">
     Labor % = Labor $ ÷ Net Sales.<br>
     Difference vs plan: within 1% on plan ·<br>1–3% attention · over 3% miss.<br>
@@ -1348,7 +1366,11 @@ const LABOR = (() => {
   let D=null, DATES=[], STORES=[], byStore={}, PERIODS=[], PWEEKS=[];
   const S = { scope:'all', range:'yesterday', sort:'store', store:null,
               selStore:null, custStores:new Set(), cStart:null, cEnd:null,
-              selP:new Set(), selPW:new Set(), loaded:false, loading:false };
+              selP:new Set(), selPW:new Set(), metric:'pct', trend:'daily', dow:null,
+              loaded:false, loading:false };
+  const DOWL = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const dowOf = s => { const [y,m,d]=s.split('-').map(Number);
+                       return (new Date(y,m-1,d).getDay()+6)%7; };
 
   /* ── Load ─────────────────────────────────────────────────── */
   async function load() {
@@ -1481,6 +1503,108 @@ const LABOR = (() => {
     });
   }
 
+  /* ── Trend ────────────────────────────────────────────────── */
+  // Day rows passing the current scope + range (optionally one store).
+  function scopedDays(onlyStore){
+    const {a,b,set} = range();
+    const inR = d => set ? set.has(d) : (d>=a && d<=b);
+    return D.days.filter(r=>{
+      if(!inR(r.dt)) return false;
+      if(onlyStore) return r.sid===onlyStore;
+      const st=byStore[r.sid]; if(!st) return false;
+      if(S.scope==='store')  return r.sid===S.selStore;
+      if(S.scope==='custom') return S.custStores.has(r.sid);
+      if(S.scope!=='all')    return st.type===S.scope;
+      return true;
+    });
+  }
+
+  const M_LABEL = {pct:'Labor %', hours:'Hours', ot:'OT Hours'};
+  const T_LABEL = {daily:'Daily', weekly:'Weekly', period:'By Period', weekday:'By Weekday'};
+
+  function trendData(onlyStore){
+    const rows = scopedDays(onlyStore);
+    const g = new Map();
+    rows.forEach(r=>{
+      if(S.trend==='daily' && S.dow!==null && dowOf(r.dt)!==S.dow) return;
+      let key,label,ord;
+      if(S.trend==='daily'){ key=r.dt; label=fmtD(r.dt); ord=r.dt; }
+      else if(S.trend==='weekday'){ const w=dowOf(r.dt); key='w'+w; label=DOWL[w]; ord=w; }
+      else { const c=D.cal[r.dt]; if(!c) return;
+             if(S.trend==='weekly'){ key=c.py+'-'+c.pn+'-'+c.wn; label='P'+c.pn+'W'+c.wn;
+                                     ord=c.py*10000+c.pn*100+c.wn; }
+             else { key=c.py+'-'+c.pn; label='P'+c.pn; ord=c.py*100+c.pn; } }
+      let o=g.get(key);
+      if(!o){ o={label,ord,fc:0,sd:0,sa:0,pay:0,sh:0,ah:0,ot:0,days:new Set()}; g.set(key,o); }
+      o.fc+=r.fc; o.sd+=r.sd; o.sa+=r.sa; o.pay+=r.pay; o.sh+=r.sh; o.ah+=r.ah; o.ot+=r.ot;
+      o.days.add(r.dt);
+    });
+    const arr=[...g.values()].sort((x,y)=>x.ord<y.ord?-1:x.ord>y.ord?1:0);
+    // weekday buckets hold different numbers of dates — average so they compare
+    const perOcc = S.trend==='weekday';
+    return arr.map(o=>{
+      const n = perOcc ? Math.max(o.days.size,1) : 1;
+      if(S.metric==='pct') return {label:o.label, sched:o.fc?o.sd/o.fc*100:0, actual:o.sa?o.pay/o.sa*100:0};
+      if(S.metric==='hours') return {label:o.label, sched:o.sh/n, actual:o.ah/n};
+      return {label:o.label, sched:null, actual:o.ot/n};
+    });
+  }
+
+  function renderTrend(onlyStore){
+    const pts = trendData(onlyStore);
+    if(pts.length<1) return '';
+    const isPct = S.metric==='pct';
+    const fmtV = v => isPct ? v.toFixed(1)+'%' : (Math.abs(v)>=100? Math.round(v) : v.toFixed(1));
+    const hasSched = pts.some(p=>p.sched!==null);
+    const vals = pts.flatMap(p=>[p.actual, ...(p.sched!==null?[p.sched]:[])]);
+    let lo=Math.min(...vals), hi=Math.max(...vals);
+    if(isPct){ lo=Math.min(lo,hi-2); } else { lo=Math.min(0,lo); }
+    if(hi===lo) hi=lo+1;
+    const pad=(hi-lo)*0.18; hi+=pad; lo-=pad;
+
+    const W=520,H=190,padL=14,padR=14,padT=22,padB=30, n=pts.length;
+    const xs = i => n===1 ? W/2 : padL+i*((W-padL-padR)/(n-1));
+    const ys = v => padT+(1-(v-lo)/(hi-lo))*(H-padT-padB);
+
+    let g='';
+    if(hasSched){
+      const d=pts.map((p,i)=>(i?'L':'M')+xs(i).toFixed(1)+' '+ys(p.sched).toFixed(1)).join(' ');
+      g+=`<path d="${d}" fill="none" stroke="var(--mut2)" stroke-width="1.6" stroke-dasharray="4 3"
+            stroke-linejoin="round" stroke-linecap="round"/>`;
+      if(n===1) g+=`<circle cx="${xs(0)}" cy="${ys(pts[0].sched)}" r="3" fill="var(--mut2)"/>`;
+    }
+    const da=pts.map((p,i)=>(i?'L':'M')+xs(i).toFixed(1)+' '+ys(p.actual).toFixed(1)).join(' ');
+    g+=`<path d="${da}" fill="none" class="tline" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    if(n<=24) pts.forEach((p,i)=>{ g+=`<circle cx="${xs(i).toFixed(1)}" cy="${ys(p.actual).toFixed(1)}" r="2.6" class="tdot"/>`; });
+
+    let vl='';
+    const idx = n<=8 ? pts.map((_,i)=>i)
+      : [...new Set([0,n-1,
+          pts.reduce((a,b,i)=>b.actual<pts[a].actual?i:a,0),
+          pts.reduce((a,b,i)=>b.actual>pts[a].actual?i:a,0)])];
+    idx.forEach(i=>{ const y=ys(pts[i].actual), dy=y<padT+16?14:-8;
+      vl+=`<text x="${xs(i).toFixed(1)}" y="${(y+dy).toFixed(1)}" text-anchor="middle"
+           font-family="'Spline Sans Mono',monospace" font-size="9.5" font-weight="600"
+           class="vlab" stroke-width="2.4" paint-order="stroke">${fmtV(pts[i].actual)}</text>`; });
+
+    let xl=''; const step=Math.ceil(n/7);
+    pts.forEach((p,i)=>{ if(i%step===0||i===n-1)
+      xl+=`<text class="ax" x="${xs(i).toFixed(1)}" y="${H-8}" text-anchor="middle">${p.label}</text>`; });
+
+    const legend = hasSched
+      ? `<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:0;border-top:2px dashed var(--mut2)"></span>Scheduled</span>
+         <span style="display:inline-flex;align-items:center;gap:5px;margin-left:14px"><span style="width:14px;height:0;border-top:2px solid var(--gold)"></span>Actual</span>`
+      : `<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:0;border-top:2px solid var(--gold)"></span>Overtime hours</span>`;
+
+    return `<div class="chart">
+      <div class="chart-head"><h3>${M_LABEL[S.metric]}</h3><span class="chart-sub">${T_LABEL[S.trend]}${
+        S.trend==='daily'&&S.dow!==null?' · '+DOWL[S.dow]:''}</span></div>
+      <div class="svgwrap"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"
+        style="width:100%;height:auto;aspect-ratio:${W}/${H}">${g}${xl}${vl}</svg></div>
+      <div class="scrub-hint" style="opacity:.8">${legend}</div>
+    </div>`;
+  }
+
   /* Date line for the header. Shows a day count when the selection
      skips days, so a gap can't be read as a continuous span. */
   function metaLine(a,b,set){
@@ -1530,6 +1654,8 @@ const LABOR = (() => {
       <div class="kpi"><div class="lab">Difference</div><div class="v" style="color:${
         TactP-TschP<=1?'var(--grn)':TactP-TschP<=3?'var(--gold2)':'var(--red)'}">${sgnP(TactP-TschP)}</div></div>
     </div>`;
+
+    h += renderTrend(null);
 
     h += `<div class="slist" style="overflow:visible"><div class="fcolhead">
       <div class="pl-h" style="border-bottom:none;padding-bottom:8px">
@@ -1625,6 +1751,8 @@ const LABOR = (() => {
         </div></div>`;
     }
 
+    h += renderTrend(S.store);
+
     h += `<div class="slist" style="overflow:visible"><div class="fcolhead">
       <div class="pl-h" style="border-bottom:none;padding-bottom:8px">
         <h3>Employees</h3><span class="tag printhide">${emps.length} people</span></div>
@@ -1656,7 +1784,7 @@ const LABOR = (() => {
     $(id).addEventListener('click',e=>{
       const b=e.target.closest('button'); if(!b) return;
       [...$(id).children].forEach(x=>x.classList.toggle('on',x===b));
-      S[key]=b.dataset.s||b.dataset.r||b.dataset.o;
+      S[key]=b.dataset.s||b.dataset.r||b.dataset.o||b.dataset.m||b.dataset.t;
       if(after) after();
       if(S.loaded) render();
     });
@@ -1673,6 +1801,22 @@ const LABOR = (() => {
     $('lbCustomWrap').style.display = S.range==='custom'     ? 'block':'none';
   });
   seg('lbSort','sort',()=>S.store=null);
+  seg('lbMetric','metric');
+  seg('lbTrend','trend',()=>{
+    $('lbDowWrap').style.display = S.trend==='daily' ? 'block':'none';
+  });
+
+  function buildDow(){
+    $('lbDowChips').innerHTML =
+      `<button class="chip${S.dow===null?' on':''}" data-d="all"><span class="cdot"></span>All days</button>`+
+      DOWL.map((d,i)=>`<button class="chip${S.dow===i?' on':''}" data-d="${i}"><span class="cdot"></span>${d}</button>`).join('');
+  }
+  buildDow();
+  $('lbDowChips').addEventListener('click',e=>{
+    const b=e.target.closest('.chip'); if(!b) return;
+    S.dow = b.dataset.d==='all' ? null : +b.dataset.d;
+    buildDow(); if(S.loaded) render();
+  });
 
   $('lbStoreSel').addEventListener('change',e=>{ S.selStore=e.target.value; S.store=null; if(S.loaded) render(); });
   $('lbStart').addEventListener('change',e=>{ S.cStart=e.target.value; if(S.loaded) render(); });
