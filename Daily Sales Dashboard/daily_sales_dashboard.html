@@ -536,6 +536,24 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
     <button data-s="Legacy Stores">Legacy</button>
     <button data-s="Kevin Acquisition">Kevin</button>
     <button data-s="Development">Dev</button>
+    <button data-s="store">Single store</button>
+    <button data-s="custom">Custom set</button>
+  </div>
+
+  <div id="lbStoreWrap" style="display:none;margin-top:10px">
+    <select id="lbStoreSel"></select>
+  </div>
+
+  <div id="lbCustomScopeWrap" style="display:none;margin-top:10px">
+    <span class="flabel" style="margin-top:6px">Pick stores <span id="lbCustCount" style="color:var(--gold2)"></span></span>
+    <div class="chips" id="lbCustChips"></div>
+    <div class="chip-actions">
+      <button id="lbCaAll">All</button>
+      <button id="lbCaNone">Clear</button>
+      <button id="lbCaLegacy">+Legacy</button>
+      <button id="lbCaKevin">+Kevin</button>
+      <button id="lbCaDev">+Dev</button>
+    </div>
   </div>
 
   <span class="flabel">Date Range</span>
@@ -547,6 +565,15 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
     <button data-r="period">Period</button>
     <button data-r="periodweek">Period Wk</button>
     <button data-r="all">All data</button>
+    <button data-r="custom">Custom</button>
+  </div>
+
+  <div id="lbCustomWrap" style="display:none;margin-top:10px">
+    <div class="range-row">
+      <input type="date" id="lbStart" class="date-inp" inputmode="none">
+      <span>→</span>
+      <input type="date" id="lbEnd" class="date-inp" inputmode="none">
+    </div>
   </div>
 
   <div id="lbPeriodWrap" style="display:none;margin-top:10px">
@@ -1320,6 +1347,7 @@ const LABOR = (() => {
 
   let D=null, DATES=[], STORES=[], byStore={}, PERIODS=[], PWEEKS=[];
   const S = { scope:'all', range:'yesterday', sort:'store', store:null,
+              selStore:null, custStores:new Set(), cStart:null, cEnd:null,
               selP:new Set(), selPW:new Set(), loaded:false, loading:false };
 
   /* ── Load ─────────────────────────────────────────────────── */
@@ -1344,7 +1372,14 @@ const LABOR = (() => {
       PWEEKS  = [...wk].map(k=>k.split('-').map(Number)).sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]);
       if(PERIODS.length) S.selP  = new Set([PERIODS[PERIODS.length-1].join('-')]);
       if(PWEEKS.length)  S.selPW = new Set([PWEEKS[PWEEKS.length-1].join('-')]);
-      buildChips();
+      S.selStore = S.selStore || STORES[0].id;
+      S.cStart = S.cStart || DATES[0];
+      S.cEnd   = S.cEnd   || DATES[DATES.length-1];
+      $('lbStoreSel').innerHTML = STORES.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+      $('lbStoreSel').value = S.selStore;
+      ['lbStart','lbEnd'].forEach((id,i)=>{ const el=$(id);
+        el.min=DATES[0]; el.max=DATES[DATES.length-1]; el.value=i?S.cEnd:S.cStart; });
+      buildChips(); buildStoreChips();
       S.loaded=true; S.loading=false; render();
     } catch(e) {
       S.loading=false;
@@ -1354,6 +1389,12 @@ const LABOR = (() => {
   }
 
   /* ── Chips ────────────────────────────────────────────────── */
+  function buildStoreChips(){
+    $('lbCustChips').innerHTML = STORES.map(s=>
+      `<button class="chip${S.custStores.has(s.id)?' on':''}" data-id="${s.id}"><span class="cdot"></span>${s.name}</button>`
+    ).join('');
+    $('lbCustCount').textContent = S.custStores.size ? `(${S.custStores.size})` : '';
+  }
   function buildChips(){
     $('lbPeriodChips').innerHTML = PERIODS.map(([py,pn])=>{
       const k=py+'-'+pn;
@@ -1382,6 +1423,14 @@ const LABOR = (() => {
       return {a:arr[0], b:arr[arr.length-1], label:names, set};
     }
 
+    if(S.range==='custom'){
+      let a=S.cStart||DATES[0], b=S.cEnd||last;
+      if(a<DATES[0]) a=DATES[0];
+      if(b>last) b=last;
+      if(a>b) [a,b]=[b,a];
+      return {a, b, label:'Custom', set:null};
+    }
+
     let start = new Date(end), label;
     if(S.range==='yesterday'){ label='Yesterday'; }
     else if(S.range==='wtd'){ const dow=(end.getDay()+6)%7; start.setDate(end.getDate()-dow); label='Week to date'; }
@@ -1400,7 +1449,9 @@ const LABOR = (() => {
     D.days.forEach(r=>{
       if(!inRange(r.dt)) return;
       const st = byStore[r.sid]; if(!st) return;
-      if(S.scope!=='all' && st.type!==S.scope) return;
+      if(S.scope==='store')       { if(r.sid!==S.selStore) return; }
+      else if(S.scope==='custom') { if(!S.custStores.has(r.sid)) return; }
+      else if(S.scope!=='all')    { if(st.type!==S.scope) return; }
       const o = m[r.sid] || (m[r.sid]={sid:r.sid,name:st.name,fc:0,sa:0,sh:0,ah:0,ot:0,sd:0,pay:0,nosch:0,days:0});
       o.fc+=r.fc; o.sa+=r.sa; o.sh+=r.sh; o.ah+=r.ah; o.ot+=r.ot; o.sd+=r.sd; o.pay+=r.pay;
       o.days++; if(r.sh===0) o.nosch++;
@@ -1450,11 +1501,28 @@ const LABOR = (() => {
       {fc:0,sa:0,sh:0,ah:0,ot:0,sd:0,pay:0});
     const TschP = T.fc?T.sd/T.fc*100:0, TactP = T.sa?T.pay/T.sa*100:0;
 
-    const scopeLbl = S.scope==='all' ? `All ${rows.length} stores` : S.scope.replace(' Stores','').replace(' Acquisition','');
+    const scopeLbl =
+      S.scope==='all'    ? `All ${rows.length} stores` :
+      S.scope==='store'  ? (byStore[S.selStore]||{}).name || '' :
+      S.scope==='custom' ? `${S.custStores.size} store${S.custStores.size!==1?'s':''} selected` :
+      S.scope.replace(' Stores','').replace(' Acquisition','');
     let h = `<div class="rhead">
       <div><div class="rtitle">Labor</div><div class="rscope">${scopeLbl}</div></div>
       <div class="rmeta">${label}<br>${metaLine(a,b,set)}</div>
     </div>`;
+
+    if(S.scope==='custom' && S.custStores.size===0){
+      const R0=$('laborResults');
+      R0.innerHTML = h+`<div class="empty">Pick one or more stores above to begin.<br>
+        Use the +Legacy / +Kevin shortcuts to add a whole group.</div>`;
+      return;
+    }
+    if(!rows.length){
+      const R0=$('laborResults');
+      R0.innerHTML = h+`<div class="empty">No labor data for this selection.<br>
+        <span style="font-size:11px;font-family:monospace;color:var(--mut2)">Available: ${DATES[0]} → ${DATES[DATES.length-1]}</span></div>`;
+      return;
+    }
 
     h += `<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
       <div class="kpi"><div class="lab">Sched Labor</div><div class="v">${pctS(TschP)}</div></div>
@@ -1593,12 +1661,36 @@ const LABOR = (() => {
       if(S.loaded) render();
     });
   }
-  seg('lbScope','scope',()=>S.store=null);
+  seg('lbScope','scope',()=>{
+    S.store=null;
+    $('lbStoreWrap').style.display       = S.scope==='store'  ? 'block':'none';
+    $('lbCustomScopeWrap').style.display = S.scope==='custom' ? 'block':'none';
+    if(S.scope==='custom') buildStoreChips();
+  });
   seg('lbRange','range',()=>{
     $('lbPeriodWrap').style.display = S.range==='period'     ? 'block':'none';
     $('lbPWWrap').style.display     = S.range==='periodweek' ? 'block':'none';
+    $('lbCustomWrap').style.display = S.range==='custom'     ? 'block':'none';
   });
   seg('lbSort','sort',()=>S.store=null);
+
+  $('lbStoreSel').addEventListener('change',e=>{ S.selStore=e.target.value; S.store=null; if(S.loaded) render(); });
+  $('lbStart').addEventListener('change',e=>{ S.cStart=e.target.value; if(S.loaded) render(); });
+  $('lbEnd').addEventListener('change',  e=>{ S.cEnd  =e.target.value; if(S.loaded) render(); });
+
+  $('lbCustChips').addEventListener('click',e=>{
+    const b=e.target.closest('.chip'); if(!b) return;
+    const id=b.dataset.id;
+    S.custStores.has(id) ? S.custStores.delete(id) : S.custStores.add(id);
+    buildStoreChips(); S.store=null; if(S.loaded) render();
+  });
+  const addType=t=>{ STORES.filter(s=>s.type===t).forEach(s=>S.custStores.add(s.id));
+                     buildStoreChips(); if(S.loaded) render(); };
+  $('lbCaAll').onclick   =()=>{ STORES.forEach(s=>S.custStores.add(s.id)); buildStoreChips(); if(S.loaded) render(); };
+  $('lbCaNone').onclick  =()=>{ S.custStores.clear(); buildStoreChips(); if(S.loaded) render(); };
+  $('lbCaLegacy').onclick=()=>addType('Legacy Stores');
+  $('lbCaKevin').onclick =()=>addType('Kevin Acquisition');
+  $('lbCaDev').onclick   =()=>addType('Development');
 
   function chipWire(id,setName){
     $(id).addEventListener('click',e=>{
