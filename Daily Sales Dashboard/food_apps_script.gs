@@ -1,9 +1,15 @@
 /**
- * ACE Brands — Daily Food Variance API  (v2 — lock + trigger)
+ * ACE Brands — Food + Labor API  (v3)
+ *
+ * Endpoints (same URL):
+ *   ?              -> food   (Inventory Shift Count)  — unchanged
+ *   ?data=labor    -> labor  (PAR + Actual Timecard + Employee Labor Analysis)
+ *   ?diag=1        -> timings
+ *   &bust=1        -> bypass cache
  *
  * SETUP (once):
  *   1. Paste this over the old code, Ctrl+S.
- *   2. Run > setupTrigger  (creates the 10-min cache refresh, removes old triggers)
+ *   2. Run > setupTrigger  (installs the 10-min refresh for BOTH datasets)
  *   3. Deploy > Manage deployments > pencil > New version > Deploy
  *
  * Sheet: https://docs.google.com/spreadsheets/d/1rM8b5xiKIQ0y12Z-dOi7yxzeurw_VOuDknt_ARDpK7s
@@ -11,7 +17,9 @@
 
 const FOOD_SHEET_ID = '1rM8b5xiKIQ0y12Z-dOi7yxzeurw_VOuDknt_ARDpK7s';
 const CACHE_KEY = 'food_v2';
-const CACHE_TTL = 21600; // 6h — trigger refreshes every 10 min anyway; long TTL = stale beats nothing
+const LABOR_KEY = 'labor_v1';
+const CACHE_TTL = 21600; // 6h — trigger refreshes every 10 min; long TTL = stale beats nothing
+const LABOR_START = '2026-07-13';   // labor history begins here
 
 /** One-time: install the refresh trigger (removes any old ones first). */
 function setupTrigger() {
@@ -20,12 +28,13 @@ function setupTrigger() {
   refreshCache();
 }
 
-/** Called by the timer. Lock ensures only one rebuild ever runs at a time. */
+/** Called by the timer. Rebuilds both datasets; lock prevents overlap. */
 function refreshCache() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) return; // another rebuild is already running — skip
   try {
     writeCache(buildJson());
+    writeCacheKey(LABOR_KEY, buildLaborJson());
   } finally {
     lock.releaseLock();
   }
@@ -33,39 +42,35 @@ function refreshCache() {
 
 function doGet(e) {
   const p = e && e.parameter || {};
-
   if (p.diag) return diag();
+
+  const isLabor = p.data === 'labor';
+  const key     = isLabor ? LABOR_KEY : CACHE_KEY;
+  const build   = isLabor ? buildLaborJson : buildJson;
 
   // 1. Serve from cache — the only path users should ever hit.
   if (!p.bust) {
-    const cached = readCache();
-    if (cached) {
-      return ContentService.createTextOutput(cached)
-        .setMimeType(ContentService.MimeType.JSON);
-    }
+    const cached = readCacheKey(key);
+    if (cached) return json_(cached);
   }
 
   // 2. Cache empty. Only ONE request may rebuild; everyone else gets
   //    a tiny "warming" response immediately instead of piling up.
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(2000)) {
-    return ContentService.createTextOutput(JSON.stringify({warming: true}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
+  if (!lock.tryLock(2000)) return json_(JSON.stringify({warming: true}));
   try {
-    // Double-check: the build that held the lock may have just filled the cache.
-    const cached2 = p.bust ? null : readCache();
-    if (cached2) {
-      return ContentService.createTextOutput(cached2)
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-    const json = buildJson();
-    writeCache(json);
-    return ContentService.createTextOutput(json)
-      .setMimeType(ContentService.MimeType.JSON);
+    const again = p.bust ? null : readCacheKey(key);
+    if (again) return json_(again);
+    const out = build();
+    writeCacheKey(key, out);
+    return json_(out);
   } finally {
     lock.releaseLock();
   }
+}
+
+function json_(s) {
+  return ContentService.createTextOutput(s).setMimeType(ContentService.MimeType.JSON);
 }
 
 /** ?diag=1 — timing + dimensions, to see where the seconds go. */
@@ -158,24 +163,163 @@ function buildJson() {
   return JSON.stringify({generated: new Date().toISOString(), rows: rows});
 }
 
-function readCache() {
+function readCache()      { return readCacheKey(CACHE_KEY); }
+function writeCache(json) { writeCacheKey(CACHE_KEY, json); }
+
+function readCacheKey(key) {
   const cache = CacheService.getScriptCache();
   const parts = [];
   for (let i = 0; ; i++) {
-    const chunk = cache.get(CACHE_KEY + '_' + i);
+    const chunk = cache.get(key + '_' + i);
     if (chunk === null) break;
     parts.push(chunk);
   }
   return parts.length ? parts.join('') : null;
 }
 
-function writeCache(json) {
+function writeCacheKey(key, json) {
   // CacheService max 100KB per key — split into chunks
   const chunks = [];
   for (let i = 0; i < json.length; i += 90000) chunks.push(json.substr(i, 90000));
   const toStore = {};
-  chunks.forEach((c, i) => toStore[CACHE_KEY + '_' + i] = c);
+  chunks.forEach((c, i) => toStore[key + '_' + i] = c);
   try { CacheService.getScriptCache().putAll(toStore, CACHE_TTL); } catch (err) {}
+}
+
+/* ══════════════════ LABOR ══════════════════ */
+
+/** Locate a tab by name fragment, falling back to a column signature. */
+function findSheet_(ss, nameFrag, mustHave) {
+  const sheets = ss.getSheets();
+  for (const s of sheets) {
+    if (s.getName().toLowerCase().indexOf(nameFrag) !== -1) return s;
+  }
+  for (const s of sheets) {
+    const hdr = s.getRange(1, 1, Math.min(3, s.getLastRow()), Math.min(30, s.getLastColumn()))
+                 .getValues().map(r => r.map(c => String(c).trim().toLowerCase()));
+    const flat = [].concat.apply([], hdr);
+    if (mustHave.every(h => flat.indexOf(h.toLowerCase()) !== -1)) return s;
+  }
+  return null;
+}
+
+function headerRow_(values, marker) {
+  for (let i = 0; i < Math.min(values.length, 6); i++) {
+    const row = values[i].map(c => String(c).trim().toLowerCase());
+    if (row.indexOf(marker.toLowerCase()) !== -1) return i;
+  }
+  return -1;
+}
+
+function readAll_(sh) {
+  const lastRow = sh.getLastRow(), lastCol = sh.getLastColumn();
+  if (lastRow < 2) return [];
+  return sh.getRange(1, 1, lastRow, lastCol).getValues();
+}
+
+function sid_(v) {
+  const d = String(v == null ? '' : v).split('-')[0].replace(/\D/g, '');
+  return d ? String(parseInt(d, 10)) : '';
+}
+function num_(v) {
+  if (v === '' || v === null || v === undefined) return 0;
+  const n = Number(String(v).replace(/[^0-9.\-]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+function buildLaborJson() {
+  const ss = SpreadsheetApp.openById(FOOD_SHEET_ID);
+
+  const shPar = findSheet_(ss, 'par schedule', ['Sched Hrs', 'Forecast']);
+  const shTc  = findSheet_(ss, 'actual timecard', ['Total Pay', 'Reg Hours']);
+  const shEla = findSheet_(ss, 'employee labor', ['Schedule Hours', 'Actual Hours']);
+  if (!shPar || !shTc || !shEla) {
+    return JSON.stringify({error: 'Labor tab not found: ' +
+      [shPar ? '' : 'PAR', shTc ? '' : 'Timecard', shEla ? '' : 'EmpLabor'].filter(String).join(', ')});
+  }
+
+  const names = {}, types = {}, days = {}, emp = {};
+  const keyOf = (d, s) => d + '|' + s;
+
+  // ---- PAR: forecast, scheduled hours, scheduled $ (one row per store/day)
+  {
+    const v = readAll_(shPar); const hi = headerRow_(v, 'Sched Hrs');
+    if (hi < 0) return JSON.stringify({error: 'PAR header not found'});
+    const H = v[hi].map(c => String(c).trim().toLowerCase());
+    const col = n => H.indexOf(n.toLowerCase());
+    const iD = col('Date'), iS = col('Stores'), iF = col('Forecast'),
+          iSH = col('Sched Hrs'), iSD = col('Sched $');
+    for (let i = hi + 1; i < v.length; i++) {
+      const d = normalizeDate(v[i][iD]); const s = sid_(v[i][iS]);
+      if (!d || !s || d < LABOR_START) continue;
+      names[s] = names[s] || String(v[i][iS] || '').split('-').pop().trim();
+      const k = keyOf(d, s);
+      const o = days[k] || (days[k] = {dt: d, sid: s, fc: 0, sh: 0, sd: 0, sa: 0, ah: 0, ot: 0, pay: 0});
+      o.fc += num_(v[i][iF]); o.sh += num_(v[i][iSH]); o.sd += num_(v[i][iSD]);
+    }
+  }
+
+  // ---- Actual Timecard Details: actual hours, OT, pay (punch level)
+  {
+    const v = readAll_(shTc); const hi = headerRow_(v, 'Total Pay');
+    if (hi < 0) return JSON.stringify({error: 'Timecard header not found'});
+    const H = v[hi].map(c => String(c).trim().toLowerCase());
+    const col = n => H.indexOf(n.toLowerCase());
+    const iD = col('Date'), iS = col('Store Id'), iSN = col('Stores'), iE = col('Employee'),
+          iJ = col('Job'), iOT = col('OT Hours'), iTH = col('Total Hours'),
+          iTP = col('Total Pay'), iST = col('Store Type');
+    for (let i = hi + 1; i < v.length; i++) {
+      const d = normalizeDate(v[i][iD]); const s = sid_(v[i][iS]);
+      if (!d || !s || d < LABOR_START) continue;
+      names[s] = names[s] || String(v[i][iSN] || '').split('-').pop().trim();
+      if (iST >= 0 && v[i][iST]) types[s] = String(v[i][iST]).trim();
+      const k = keyOf(d, s);
+      const o = days[k] || (days[k] = {dt: d, sid: s, fc: 0, sh: 0, sd: 0, sa: 0, ah: 0, ot: 0, pay: 0});
+      o.ah += num_(v[i][iTH]); o.ot += num_(v[i][iOT]); o.pay += num_(v[i][iTP]);
+      const nm = String(v[i][iE] || '').trim(); if (!nm) continue;
+      const ek = d + '|' + s + '|' + nm;
+      const e = emp[ek] || (emp[ek] = {dt: d, sid: s, n: nm, job: '', sh: 0, ah: 0, ot: 0, pay: 0});
+      e.ah += num_(v[i][iTH]); e.ot += num_(v[i][iOT]); e.pay += num_(v[i][iTP]);
+      if (v[i][iJ]) e.job = String(v[i][iJ]).trim();
+    }
+  }
+
+  // ---- Employee Labor Analysis: per-employee scheduled hours
+  {
+    const v = readAll_(shEla); const hi = headerRow_(v, 'Schedule Hours');
+    if (hi < 0) return JSON.stringify({error: 'Employee Labor header not found'});
+    const H = v[hi].map(c => String(c).trim().toLowerCase());
+    const col = n => H.indexOf(n.toLowerCase());
+    const iD = col('Date'), iS = col('Store Id'), iE = col('Employee'),
+          iJ = col('Job'), iSH = col('Schedule Hours');
+    for (let i = hi + 1; i < v.length; i++) {
+      const d = normalizeDate(v[i][iD]); const s = sid_(v[i][iS]);
+      if (!d || !s || d < LABOR_START) continue;
+      const nm = String(v[i][iE] || '').trim(); if (!nm) continue;
+      const ek = d + '|' + s + '|' + nm;
+      const e = emp[ek] || (emp[ek] = {dt: d, sid: s, n: nm, job: '', sh: 0, ah: 0, ot: 0, pay: 0});
+      e.sh += num_(v[i][iSH]);
+      if (!e.job && v[i][iJ]) e.job = String(v[i][iJ]).trim();
+    }
+  }
+
+  const r2 = n => Math.round(n * 100) / 100;
+  const dayArr = Object.keys(days).map(k => {
+    const o = days[k];
+    return {dt: o.dt, sid: o.sid, fc: r2(o.fc), sh: r2(o.sh), sd: r2(o.sd),
+            sa: 0, ah: r2(o.ah), ot: r2(o.ot), pay: r2(o.pay)};
+  }).sort((a, b) => a.dt < b.dt ? -1 : a.dt > b.dt ? 1 : (+a.sid) - (+b.sid));
+
+  const empArr = Object.keys(emp).map(k => {
+    const e = emp[k];
+    return {dt: e.dt, sid: e.sid, n: e.n, job: e.job, sh: r2(e.sh), ah: r2(e.ah), ot: r2(e.ot), pay: r2(e.pay)};
+  }).sort((a, b) => a.dt < b.dt ? -1 : a.dt > b.dt ? 1 : a.n < b.n ? -1 : 1);
+
+  const stores = Object.keys(names).sort(function (a, b) { return (+a) - (+b); })
+    .map(function (s) { return {id: s, name: names[s], type: types[s] || ''}; });
+
+  return JSON.stringify({generated: new Date().toISOString(),
+                         stores: stores, days: dayArr, emp: empArr});
 }
 
 function normalizeDate(v) {

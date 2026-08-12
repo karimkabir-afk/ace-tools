@@ -1384,6 +1384,30 @@ const LABOR = (() => {
       if(!resp.ok) throw new Error('HTTP '+resp.status);
       D = await resp.json();
       if(!D.days) throw new Error(D.error||'Bad response');
+
+      // Net sales live in a different workbook, so they arrive with the sales
+      // feed rather than the labor endpoint. Join on date + store name.
+      if(window.RAW && window.RAW.length){
+        const nrm = n => (n||'').toLowerCase()
+          .replace(/\broad\b/g,'rd').replace(/glassgow/g,'glasgow').replace(/[^a-z0-9]/g,'');
+        const sales = {};
+        window.RAW.forEach(r=>{ if(r.dt&&r.sn) sales[r.dt+'|'+nrm(r.sn)] = r.sales||0; });
+        const nm = {}; D.stores.forEach(s=>nm[s.id]=nrm(s.name));
+        let hit=0;
+        D.days.forEach(r=>{ const v=sales[r.dt+'|'+nm[r.sid]]; if(v!==undefined){ r.sa=v; hit++; } });
+        D.salesJoined = hit;
+      }
+
+      // Fiscal calendar also comes from the sales feed, so P8 means the same
+      // thing on every tab.
+      if(!D.cal && window.RAW){
+        D.cal = {};
+        window.RAW.forEach(r=>{
+          if(!r.dt || !r.pn) return;
+          const yr=+r.dt.slice(0,4);
+          D.cal[r.dt] = {py:(r.pn===1 && +r.dt.slice(5,7)>=11)?yr+1:yr, pn:r.pn, wn:r.wn||0};
+        });
+      }
       STORES = D.stores;
       DATES = [...new Set(D.days.map(r=>r.dt))].sort();
       byStore = {}; STORES.forEach(s=>byStore[s.id]=s);
