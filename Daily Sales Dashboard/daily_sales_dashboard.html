@@ -1349,7 +1349,7 @@ function initDashboard() {
 
 <script>
 /* ══════════════════════════ LABOR VIEW ═════════════════════════ */
-const LABOR_URL = 'labor_test.json'; /* TEMP — replace with Apps Script ?data=labor */
+const LABOR_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVVY7MxMW1Uh2cVZwthbaa7cVEtRchwUqE_tkrWTdqAkhlFC/exec?data=labor';
 
 const LABOR = (() => {
   const $ = id => document.getElementById(id);
@@ -1409,7 +1409,14 @@ const LABOR = (() => {
         });
       }
       STORES = D.stores;
-      DATES = [...new Set(D.days.map(r=>r.dt))].sort();
+      // PAR carries schedule for days that haven't happened yet. Those days have
+      // no actuals, so they'd read as 0% labor — anchor the ranges on days that
+      // actually have timecard data instead.
+      const actualBy = {};
+      D.days.forEach(r=>{ actualBy[r.dt] = (actualBy[r.dt]||0) + r.ah; });
+      DATES = Object.keys(actualBy).filter(d=>actualBy[d]>0).sort();
+      D.futureDays = Object.keys(actualBy).filter(d=>actualBy[d]<=0).sort();
+      if(!DATES.length) throw new Error('No days with recorded hours yet.');
       byStore = {}; STORES.forEach(s=>byStore[s.id]=s);
       D.cal = D.cal || {};
       const pk=new Set(), wk=new Set();
