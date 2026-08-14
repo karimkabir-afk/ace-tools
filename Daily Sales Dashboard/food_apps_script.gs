@@ -15,9 +15,10 @@
  * Sheet: https://docs.google.com/spreadsheets/d/1rM8b5xiKIQ0y12Z-dOi7yxzeurw_VOuDknt_ARDpK7s
  */
 
-const FOOD_SHEET_ID = '1rM8b5xiKIQ0y12Z-dOi7yxzeurw_VOuDknt_ARDpK7s';
+const FOOD_SHEET_ID  = '1rM8b5xiKIQ0y12Z-dOi7yxzeurw_VOuDknt_ARDpK7s';
+const LABOR_SHEET_ID = '1m3aYo6J8wYDKY_1S-TIVpU-JYoZ8VzcfV7qvT6ZnFlY';
 const CACHE_KEY = 'food_v2';
-const LABOR_KEY = 'labor_v1';
+const LABOR_KEY = 'labor_v2';
 const CACHE_TTL = 21600; // 6h — trigger refreshes every 10 min; long TTL = stale beats nothing
 const LABOR_START = '2026-07-13';   // labor history begins here
 
@@ -42,6 +43,7 @@ function refreshCache() {
 
 function doGet(e) {
   const p = e && e.parameter || {};
+  if (p.diag === 'labor') return diagLabor_();
   if (p.diag) return diag();
 
   const isLabor = p.data === 'labor';
@@ -71,6 +73,30 @@ function doGet(e) {
 
 function json_(s) {
   return ContentService.createTextOutput(s).setMimeType(ContentService.MimeType.JSON);
+}
+
+/** ?diag=labor — list every tab in the labor workbook with its headers. */
+function diagLabor_() {
+  const out = {sheetId: LABOR_SHEET_ID, tabs: []};
+  let ss;
+  try { ss = SpreadsheetApp.openById(LABOR_SHEET_ID); }
+  catch (err) { return json_(JSON.stringify({error: 'Cannot open labor sheet: ' + err.message})); }
+  ss.getSheets().forEach(function (s) {
+    const lastRow = s.getLastRow(), lastCol = s.getLastColumn();
+    let hdr = [];
+    if (lastRow > 0 && lastCol > 0) {
+      const scan = s.getRange(1, 1, Math.min(4, lastRow), Math.min(30, lastCol)).getValues();
+      // pick the row with the most non-empty cells as the likely header
+      let best = 0, bestN = -1;
+      scan.forEach(function (r, i) {
+        const n = r.filter(function (c) { return String(c).trim() !== ''; }).length;
+        if (n > bestN) { bestN = n; best = i; }
+      });
+      hdr = scan[best].map(function (c) { return String(c).trim(); }).filter(String);
+    }
+    out.tabs.push({name: s.getName(), gid: s.getSheetId(), rows: lastRow, cols: lastCol, headers: hdr});
+  });
+  return json_(JSON.stringify(out));
 }
 
 /** ?diag=1 — timing + dimensions, to see where the seconds go. */
@@ -228,14 +254,15 @@ function num_(v) {
 }
 
 function buildLaborJson() {
-  const ss = SpreadsheetApp.openById(FOOD_SHEET_ID);
+  const ss = SpreadsheetApp.openById(LABOR_SHEET_ID);
 
   const shPar = findSheet_(ss, 'par schedule', ['Sched Hrs', 'Forecast']);
   const shTc  = findSheet_(ss, 'actual timecard', ['Total Pay', 'Reg Hours']);
   const shEla = findSheet_(ss, 'employee labor', ['Schedule Hours', 'Actual Hours']);
   if (!shPar || !shTc || !shEla) {
     return JSON.stringify({error: 'Labor tab not found: ' +
-      [shPar ? '' : 'PAR', shTc ? '' : 'Timecard', shEla ? '' : 'EmpLabor'].filter(String).join(', ')});
+      [shPar ? '' : 'PAR', shTc ? '' : 'Timecard', shEla ? '' : 'EmpLabor'].filter(String).join(', ') +
+      '. Tabs present: ' + ss.getSheets().map(function(s){return s.getName();}).join(' | ')});
   }
 
   const names = {}, types = {}, days = {}, emp = {};
