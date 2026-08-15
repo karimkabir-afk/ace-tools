@@ -281,7 +281,7 @@ svg{width:100%;display:block;overflow:visible}
    else is context and stays quiet, so the few bad rows actually stand out. */
 .lbwrap{overflow-x:auto}
 .lbrow,.lbhead{display:grid;gap:0;align-items:stretch;
-  grid-template-columns:6px minmax(104px,1.3fr) 72px 72px 66px 48px 48px 46px 58px 60px 92px 96px}
+  grid-template-columns:6px minmax(96px,1.2fr) 70px 70px 64px 46px 46px 44px 56px 58px 88px 104px}
 .lbrow{padding:0;border-bottom:1px solid rgba(38,52,43,.5);cursor:pointer;transition:.12s}
 .lbrow:last-child{border-bottom:none}
 .lbrow:hover{background:var(--rowhov)}
@@ -307,8 +307,9 @@ svg{width:100%;display:block;overflow:visible}
 .lbverdict span{position:relative}
 .lbdrv{font-family:'Spline Sans Mono',monospace;font-size:9.5px;color:var(--mut2);font-weight:400}
 .lbdrv-inline{display:none}
-.lbdrvcol{font-family:'Spline Sans Mono',monospace;font-size:9.5px;color:var(--mut2);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;justify-content:flex-end}
+.lbrow>span.lbdrvcol{display:block;line-height:38px;text-align:right;
+  font-family:'Spline Sans Mono',monospace;font-size:9.5px;color:var(--mut2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:820px){.lbdrv-inline{display:block}}
 .lbsep{box-shadow:inset 1px 0 0 var(--line)}
 .lb-g{color:var(--grn)}.lb-a{color:var(--gold2)}.lb-r{color:var(--red)}.lb-m{color:var(--mut2)}
@@ -1744,8 +1745,8 @@ const LABOR = (() => {
 
     // widest miss in view sets the bar scale, so the shape is comparable
     const maxD = Math.max(1, ...rows.filter(x=>!x.noSchedule).map(x=>Math.abs(x.dP)));
-    const short = d => d ? d.replace('hours over','hours').replace('sales miss','sales')
-                            .replace('hours + sales','hours + sales')
+    const short = d => d ? d.replace('hours + sales','hours+sales')
+                            .replace('hours over','hours').replace('sales miss','sales')
                             .replace(/no schedule.*/,'no schedule') : '';
     rows.forEach(o=>{
       const c = o.cls==='g' ? '' : 'lb-'+o.cls;   // green stays quiet
@@ -1765,7 +1766,7 @@ const LABOR = (() => {
         <span style="color:var(--ink)">${pctS(o.actP)}</span>
         <span class="lbsep lbverdict ${c}">
           ${barW?`<i class="lbbar" style="width:${barW.toFixed(0)}%;background:${barC}"></i>`:''}
-          <span>${o.noSchedule?'no sched':sgnP(o.dP)}</span></span>
+          <span>${o.noSchedule?'—':sgnP(o.dP)}</span></span>
         <span class="lbhide lbdrvcol">${short(o.driver)||'—'}</span>
       </div>`;
     });
