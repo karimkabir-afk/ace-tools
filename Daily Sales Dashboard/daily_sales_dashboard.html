@@ -283,7 +283,7 @@ svg{width:100%;display:block;overflow:visible}
    else is context and stays quiet, so the few bad rows actually stand out. */
 .lbwrap{overflow-x:auto}
 .lbrow,.lbhead{display:grid;gap:0;align-items:stretch;
-  grid-template-columns:6px minmax(96px,1.2fr) 70px 70px 64px 46px 46px 44px 56px 58px 88px 104px}
+  grid-template-columns:6px minmax(88px,1.1fr) 66px 66px 62px 44px 44px 42px 54px 56px 74px 82px 88px}
 .lbrow{padding:0;border-bottom:1px solid rgba(38,52,43,.5);cursor:pointer;transition:.12s}
 .lbrow:last-child{border-bottom:none}
 .lbrow:hover{background:var(--rowhov)}
@@ -334,8 +334,8 @@ svg{width:100%;display:block;overflow:visible}
   display:flex;flex-direction:column;gap:1px}
 .emrow .emjob{font-family:'Spline Sans Mono',monospace;font-size:9.5px;color:var(--mut2);font-weight:400}
 @media(max-width:820px){
-  .lbrow,.lbhead{grid-template-columns:6px minmax(0,1fr) 62px 74px}
-  .lbhide{display:none}
+  .lbrow,.lbhead{grid-template-columns:6px minmax(0,1fr) 68px 74px}
+  .lbrow>span.lbhide,.lbhead>span.lbhide,.lbhide{display:none}
   .emrow,.emhead{grid-template-columns:minmax(0,1fr) 56px 56px 52px}
   .emhide{display:none}
 }
@@ -1740,20 +1740,24 @@ const LABOR = (() => {
         <span>Store</span>
         <span class="lbhide">Proj Sales</span><span class="lbhide">Actual</span><span class="lbhide">Diff</span>
         <span class="lbhide lbsep">Sched</span><span class="lbhide">Actual</span><span class="lbhide">Diff</span>
-        <span class="lbhide lbsep">Sched %</span><span>Actual %</span>
+        <span class="lbhide lbsep">Sched %</span><span class="lbhide">Actual %</span>
         <span class="lbsep">Vs Plan</span>
+        <span>Excess $</span>
         <span class="lbhide">Driver</span>
       </div></div>`;
 
-    // widest miss in view sets the bar scale, so the shape is comparable
-    const maxD = Math.max(1, ...rows.filter(x=>!x.noSchedule).map(x=>Math.abs(x.dP)));
+    // Excess labor $ = how far over plan, applied to that store's own sales.
+    // A small store at a bad rate can cost less than a big store at a mild one,
+    // so the bar measures money while the number keeps showing the rate.
+    rows.forEach(o=>{ o.excess = (o.noSchedule || o.dP<=0) ? 0 : o.dP/100*o.sa; });
+    const maxE = Math.max(1, ...rows.map(x=>x.excess));
     const short = d => d ? d.replace('hours + sales','hours+sales')
                             .replace('hours over','hours').replace('sales miss','sales')
                             .replace(/no schedule.*/,'no schedule') : '';
     rows.forEach(o=>{
       const c = o.cls==='g' ? '' : 'lb-'+o.cls;   // green stays quiet
       // bar only for stores over plan — under plan is good and needs no weight
-      const barW = (o.noSchedule || o.cls==='g') ? 0 : Math.min(100, Math.abs(o.dP)/maxD*100);
+      const barW = o.excess>0 ? Math.min(100, o.excess/maxE*100) : 0;
       const barC = o.cls==='r' ? 'var(--sig-r)' : 'var(--sig-a)';
       h += `<div class="lbrow st-${o.cls}" data-sid="${o.sid}">
         <span class="lbstripe"><i></i></span>
@@ -1765,10 +1769,11 @@ const LABOR = (() => {
         <span class="lbhide">${o.ah.toFixed(0)}</span>
         <span class="lbhide">${sgnH(o.dH)}</span>
         <span class="lbhide lbsep">${o.noSchedule?'—':pctS(o.schP)}</span>
-        <span style="color:var(--ink)">${pctS(o.actP)}</span>
-        <span class="lbsep lbverdict ${c}">
+        <span class="lbhide" style="color:var(--ink)">${pctS(o.actP)}</span>
+        <span class="lbsep lbverdict ${c}"><span>${o.noSchedule?'—':sgnP(o.dP)}</span></span>
+        <span class="lbverdict ${c}">
           ${barW?`<i class="lbbar" style="width:${barW.toFixed(0)}%;background:${barC}"></i>`:''}
-          <span>${o.noSchedule?'—':sgnP(o.dP)}</span></span>
+          <span>${o.excess>0?money(o.excess):'—'}</span></span>
         <span class="lbhide lbdrvcol">${short(o.driver)||'—'}</span>
       </div>`;
     });
@@ -1780,9 +1785,11 @@ const LABOR = (() => {
         <span class="lbhide">${sgn(T.sa-T.fc)}</span>
         <span class="lbhide lbsep">${T.sh.toFixed(0)}</span><span class="lbhide">${T.ah.toFixed(0)}</span>
         <span class="lbhide">${sgnH(T.ah-T.sh)}</span>
-        <span class="lbhide lbsep">${pctS(TschP)}</span><span>${pctS(TactP)}</span>
+        <span class="lbhide lbsep">${pctS(TschP)}</span><span class="lbhide">${pctS(TactP)}</span>
         <span class="lbsep lbverdict ${TactP-TschP<=1?'':TactP-TschP<=3?'lb-a':'lb-r'}">
           <span>${sgnP(TactP-TschP)}</span></span>
+        <span class="lbverdict">${(()=>{const t=rows.reduce((a,b)=>a+(b.excess||0),0);
+          return t>0?money(t):'—';})()}</span>
         <span class="lbhide"></span>
       </div></div>`;
 
