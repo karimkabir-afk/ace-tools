@@ -495,11 +495,16 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
     </div>
   </div>
 
-  <span class="flabel">Metric</span>
-  <div class="seg" id="metric">
-    <button class="on" data-m="sales">Net Sales</button>
-    <button data-m="count">Transactions</button>
-    <button data-m="avgcheck">Avg Check</button>
+  <!-- Shown only when the feed actually carries Customer Count. It stopped
+       upstream after 2026-06-14, which made Transactions and Avg Check read
+       zero; this reappears on its own if counts come back. -->
+  <div id="metricWrap" style="display:none">
+    <span class="flabel">Metric</span>
+    <div class="seg" id="metric">
+      <button class="on" data-m="sales">Net Sales</button>
+      <button data-m="count">Transactions</button>
+      <button data-m="avgcheck">Avg Check</button>
+    </div>
   </div>
 
   <span class="flabel">Trend Mode</span>
@@ -669,6 +674,19 @@ const APPS_URL = 'https://script.google.com/macros/s/AKfycbxodxx9DHMd753fiJwMQKt
 
 function initDashboard() {
   const RAW = window.RAW;
+
+  /* Customer Count stopped arriving in the sales feed after 2026-06-14, which
+     makes Transactions and Avg Check read zero. Detect it from the data rather
+     than hardcoding, so those metrics return by themselves once counts do.
+     Looks at the most recent fortnight only — old rows still carry counts. */
+  const HAVE_COUNTS = (() => {
+    const ds = RAW.map(r=>r.dt).filter(Boolean).sort();
+    if(!ds.length) return false;
+    const end = new Date(ds[ds.length-1]+'T00:00:00');
+    end.setDate(end.getDate()-13);
+    const from = end.toISOString().slice(0,10);
+    return RAW.some(r => r.dt >= from && (r.cnt||0) > 0);
+  })();
 
   /* ── Helpers ─────────────────────────────────────────────────────────── */
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1211,9 +1229,10 @@ function initDashboard() {
       <div class="val num">${fmtHero(heroVal,S.metric)}</div>
     </div>`;
 
-    // KPI cards — other 2 metrics
-    const kpis = ['sales','count','avgcheck'].filter(m=>m!==S.metric);
-    h+=`<div class="kpis">
+    // KPI cards showed Transactions and Avg Check, both zero since the upstream
+    // Customer Count feed stopped on 2026-06-14. Hidden until it returns.
+    const kpis = ['sales','count','avgcheck'].filter(m=>m!==S.metric && HAVE_COUNTS);
+    if(kpis.length===2) h+=`<div class="kpis">
       <div class="kpi"><div class="lab">${METRIC_LABEL[kpis[0]]}</div><div class="v">${fmtHero(tot[kpis[0]],kpis[0])}</div></div>
       <div class="kpi"><div class="lab">${METRIC_LABEL[kpis[1]]}</div><div class="v">${fmtHero(tot[kpis[1]],kpis[1])}</div></div>
     </div>`;
@@ -1290,6 +1309,8 @@ function initDashboard() {
     if(S.scope==='custom') refreshChips();
   });
   $$('storeSel').addEventListener('change',e=>{ S.selStore=e.target.value; render(); });
+  $$('metricWrap').style.display = HAVE_COUNTS ? '' : 'none';
+  if(!HAVE_COUNTS) S.metric = 'sales';
   segWire('metric',   'metric');
   segWire('trendMode','trendMode',()=>{
     const isDaily = S.trendMode==='daily';
