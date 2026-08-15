@@ -14,6 +14,7 @@
   --ink:#eef3ee;--mut:#8fa394;--mut2:#5f7065;
   --gold:#d4a23a;--gold2:#e8bd5a;
   --grn:#5fcf80;--red:#e8736b;--red2:#cf5268;
+  --sig-a:#e8bd5a;--sig-r:#e8736b;
   --tint-gold:rgba(212,162,58,.16);--tint-grn:rgba(95,207,128,.16);
   --tint-red:rgba(232,115,107,.14);--tint-red2:rgba(207,82,104,.16);
   --glow1:rgba(212,162,58,.06);--glow2:rgba(95,207,128,.04);
@@ -27,6 +28,7 @@
   --ink:#16201a;--mut:#5b6b5f;--mut2:#67756a;
   --gold:#9a7112;--gold2:#7d5c0d;
   --grn:#237f42;--red:#c03d34;--red2:#a02845;
+  --sig-a:#d1901a;--sig-r:#c03d34;
   --tint-gold:rgba(154,113,18,.13);--tint-grn:rgba(35,127,66,.12);
   --tint-red:rgba(192,61,52,.11);--tint-red2:rgba(160,40,69,.11);
   --glow1:rgba(212,162,58,.10);--glow2:rgba(95,207,128,.07);
@@ -298,8 +300,8 @@ svg{width:100%;display:block;overflow:visible}
 /* status stripe — scannable down the left edge */
 .lbstripe{padding:0!important;min-height:38px}
 .lbstripe i{display:block;width:3px;height:100%;border-radius:2px;background:transparent}
-.lbrow.st-r .lbstripe i{background:var(--red)}
-.lbrow.st-a .lbstripe i{background:var(--gold2)}
+.lbrow.st-r .lbstripe i{background:var(--sig-r)}
+.lbrow.st-a .lbstripe i{background:var(--sig-a)}
 /* the one column that shouts */
 .lbverdict{font-weight:600;position:relative;overflow:hidden}
 .lbbar{position:absolute;right:0;top:50%;transform:translateY(-50%);height:15px;border-radius:2px;
@@ -1752,7 +1754,7 @@ const LABOR = (() => {
       const c = o.cls==='g' ? '' : 'lb-'+o.cls;   // green stays quiet
       // bar only for stores over plan — under plan is good and needs no weight
       const barW = (o.noSchedule || o.cls==='g') ? 0 : Math.min(100, Math.abs(o.dP)/maxD*100);
-      const barC = o.cls==='r' ? 'var(--red)' : 'var(--gold2)';
+      const barC = o.cls==='r' ? 'var(--sig-r)' : 'var(--sig-a)';
       h += `<div class="lbrow st-${o.cls}" data-sid="${o.sid}">
         <span class="lbstripe"><i></i></span>
         <span class="lbname">${o.name}${o.driver?`<span class="lbdrv lbdrv-inline">${short(o.driver)}</span>`:''}</span>
