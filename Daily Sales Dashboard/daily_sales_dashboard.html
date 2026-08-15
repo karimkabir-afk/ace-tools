@@ -1951,6 +1951,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     $('laborResults').style.display = labor?'':'none';
     $('brandSub').textContent = sales?'Daily Sales':food?'Daily Food':'Daily Labor';
     $('tagline').textContent  = sales?'Daily Sales Dashboard':food?'Daily Food Count Dashboard':'Daily Labor Dashboard';
+    document.title = 'ACE Brands · ' + (sales?'Daily Sales':food?'Daily Food':'Daily Labor');
     setPrintMeta(v);
     if(labor) LABOR.ensure();
     if(food && !F.loaded && !F.loading) loadFood();
