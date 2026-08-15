@@ -192,24 +192,43 @@ function buildJson() {
 function readCache()      { return readCacheKey(CACHE_KEY); }
 function writeCache(json) { writeCacheKey(CACHE_KEY, json); }
 
+/* CacheService caps a value at 100KB, so payloads are split across numbered
+   keys. The count is stored alongside them: reading "until a gap" used to pick
+   up leftover chunks from a previous, larger payload and append them to valid
+   JSON, which produced a parse error at the join. Read exactly n, or nothing. */
 function readCacheKey(key) {
   const cache = CacheService.getScriptCache();
-  const parts = [];
-  for (let i = 0; ; i++) {
-    const chunk = cache.get(key + '_' + i);
-    if (chunk === null) break;
-    parts.push(chunk);
+  const n = parseInt(cache.get(key + '_n'), 10);
+  if (!n || n < 1) return null;
+  const names = [];
+  for (let i = 0; i < n; i++) names.push(key + '_' + i);
+  const got = cache.getAll(names);
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    const c = got[key + '_' + i];
+    if (c === null || c === undefined) return null;  // partial: rebuild instead
+    out += c;
   }
-  return parts.length ? parts.join('') : null;
+  return out;
 }
 
 function writeCacheKey(key, json) {
-  // CacheService max 100KB per key — split into chunks
   const chunks = [];
   for (let i = 0; i < json.length; i += 90000) chunks.push(json.substr(i, 90000));
   const toStore = {};
-  chunks.forEach((c, i) => toStore[key + '_' + i] = c);
-  try { CacheService.getScriptCache().putAll(toStore, CACHE_TTL); } catch (err) {}
+  chunks.forEach(function (c, i) { toStore[key + '_' + i] = c; });
+  const cache = CacheService.getScriptCache();
+  try {
+    // drop any chunks left by a previous, longer payload
+    const stale = [];
+    for (let i = chunks.length; i < chunks.length + 12; i++) stale.push(key + '_' + i);
+    cache.removeAll(stale);
+  } catch (err) {}
+  // write the count last, so a half-written cache never looks complete
+  try {
+    cache.putAll(toStore, CACHE_TTL);
+    cache.put(key + '_n', String(chunks.length), CACHE_TTL);
+  } catch (err) {}
 }
 
 /* ══════════════════ LABOR ══════════════════ */
