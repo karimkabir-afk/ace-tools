@@ -139,6 +139,7 @@ svg{width:100%;display:block;overflow:visible}
 .tline{stroke:var(--gold)}
 .tdot{fill:var(--gold)}
 .vlab{fill:var(--gold2);stroke:var(--bg)}
+.slab{fill:var(--mut2);stroke:var(--bg)}
 .agtop{stop-color:var(--gold);stop-opacity:.22}
 .agbot{stop-color:var(--gold);stop-opacity:0}
 
@@ -1705,10 +1706,20 @@ const LABOR = (() => {
       : [...new Set([0,n-1,
           pts.reduce((a,b,i)=>b.actual<pts[a].actual?i:a,0),
           pts.reduce((a,b,i)=>b.actual>pts[a].actual?i:a,0)])];
-    idx.forEach(i=>{ const y=ys(pts[i].actual), dy=y<padT+16?14:-8;
+    idx.forEach(i=>{
+      const y=ys(pts[i].actual), dy=y<padT+16?14:-8;
       vl+=`<text x="${xs(i).toFixed(1)}" y="${(y+dy).toFixed(1)}" text-anchor="middle"
            font-family="'Spline Sans Mono',monospace" font-size="9.5" font-weight="600"
-           class="vlab" stroke-width="2.4" paint-order="stroke">${fmtV(pts[i].actual)}</text>`; });
+           class="vlab" stroke-width="2.4" paint-order="stroke">${fmtV(pts[i].actual)}</text>`;
+      // label the scheduled line too, nudged the opposite way so the two never collide
+      if(hasSched && pts[i].sched!==null){
+        const sy=ys(pts[i].sched);
+        const sdy = Math.abs(sy-y)<14 ? (dy>0?-8:14) : (sy<padT+16?14:-8);
+        vl+=`<text x="${xs(i).toFixed(1)}" y="${(sy+sdy).toFixed(1)}" text-anchor="middle"
+             font-family="'Spline Sans Mono',monospace" font-size="9" font-weight="500"
+             class="slab" stroke-width="2.2" paint-order="stroke">${fmtV(pts[i].sched)}</text>`;
+      }
+    });
 
     let xl=''; const step=Math.ceil(n/7);
     pts.forEach((p,i)=>{ if(i%step===0||i===n-1)
@@ -1907,13 +1918,21 @@ const LABOR = (() => {
              (on ? `<b>${S.empDir==='asc'?'▲':'▼'}</b>` : '') + `</span>`;
     };
     const unsched = emps.filter(e=>e.flag==='not scheduled').reduce((s,e)=>s+e.ah,0);
-    const noshow  = emps.filter(e=>e.flag==='no show').length;
+    const noshowList = emps.filter(e=>e.flag==='no show');
+    const noshow  = noshowList.length;
+    const noshowHrs = noshowList.reduce((s,e)=>s+e.sh,0);
 
     let h = `<div class="fback" id="lbBack">← All stores</div>`;
     h += `<div class="rhead"><div><div class="rtitle">${o.name}</div>
       <div class="rscope">${o.noSchedule?'No schedule entered':pctS(o.actP)+' labor · '+sgnP(o.dP)+' vs plan'}</div></div>
       <div class="rmeta">${label}<br>${metaLine(a,b,set)}</div></div>`;
 
+    h += `<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi"><div class="lab">Sched Labor %</div><div class="v">${o.noSchedule?'—':pctS(o.schP)}</div></div>
+      <div class="kpi"><div class="lab">Actual Labor %</div><div class="v">${pctS(o.actP)}</div></div>
+      <div class="kpi"><div class="lab">Difference</div><div class="v" style="color:${
+        o.noSchedule?'var(--red)':o.dP<=1?'var(--grn)':'var(--red)'}">${o.noSchedule?'—':sgnP(o.dP)}</div></div>
+    </div>`;
     h += `<div class="kpis" style="grid-template-columns:repeat(4,1fr)">
       <div class="kpi"><div class="lab">Sched Hrs</div><div class="v">${o.sh.toFixed(0)}</div></div>
       <div class="kpi"><div class="lab">Actual Hrs</div><div class="v">${o.ah.toFixed(0)}</div></div>
@@ -1927,7 +1946,7 @@ const LABOR = (() => {
         <div style="font-size:12.5px;line-height:1.6">
         ${unsched>0?`<span style="color:var(--red)">${unsched.toFixed(1)} hrs worked by staff who weren't scheduled</span>`:''}
         ${unsched>0&&noshow>0?'<br>':''}
-        ${noshow>0?`<span style="color:var(--red2)">${noshow} scheduled ${noshow===1?'person':'people'} did not show</span>`:''}
+        ${noshow>0?`<span style="color:var(--violet)">${noshow} scheduled ${noshow===1?'person':'people'} did not show — ${noshowHrs.toFixed(1)} hrs unfilled</span>`:''}
         </div></div>`;
     }
 
