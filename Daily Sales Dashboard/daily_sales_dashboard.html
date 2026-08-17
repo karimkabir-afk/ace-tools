@@ -339,22 +339,47 @@ svg{width:100%;display:block;overflow:visible}
 .lbtot{border-top:1.5px solid var(--line2)}
 .lbtot>span{font-weight:600;color:var(--ink)}
 /* Employee detail */
-.emrow,.emhead{display:grid;grid-template-columns:minmax(110px,1.6fr) 88px 62px 62px 62px 92px;
-  gap:0;align-items:center;border-bottom:1px solid rgba(38,52,43,.5)}
+/* same treatment as the store table: fixed row height, one signal column,
+   note moved out of the name cell so nothing wraps */
+.emrow,.emhead{display:grid;
+  grid-template-columns:minmax(104px,1.5fr) 84px 58px 58px 58px 52px 92px;
+  gap:0;align-items:stretch;border-bottom:1px solid rgba(38,52,43,.5)}
 .emrow:last-child{border-bottom:none}
 .emhead{font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:.06em;
-  font-family:'Spline Sans Mono',monospace;border-bottom:1px solid var(--line)}
-.emhead span,.emrow span{padding:9px 7px;text-align:right;font-family:'Spline Sans Mono',monospace;font-size:12px}
-.emhead span:first-child,.emrow span:first-child{text-align:left;padding-left:16px}
-.emrow span:last-child,.emhead span:last-child{padding-right:16px}
+  font-family:'Spline Sans Mono',monospace;border-bottom:1px solid var(--line);align-items:center}
+.emhead>span,.emrow>span{padding:0 7px;text-align:right;display:flex;align-items:center;
+  justify-content:flex-end;min-height:36px;
+  font-family:'Spline Sans Mono',monospace;font-size:12px;color:var(--mut)}
+.emhead>span{min-height:0;padding-top:8px;padding-bottom:8px}
+.emhead>span:first-child{text-align:left;justify-content:flex-start}
+.emrow>span:first-child{text-align:left}
+.emrow>span:last-child,.emhead>span:last-child{padding-right:16px}
+.emhead>span:first-child,.emrow>span:first-child{padding-left:16px}
 .emrow .emname{font-family:'Spline Sans',sans-serif;font-size:12.5px;font-weight:500;
-  display:flex;flex-direction:column;gap:1px}
-.emrow .emjob{font-family:'Spline Sans Mono',monospace;font-size:9.5px;color:var(--mut2);font-weight:400}
+  color:var(--ink);flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;
+  white-space:nowrap;overflow:hidden}
+.emrow .emname>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.emrow>span.emjob{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;
+  line-height:36px;font-size:10.5px}
+.emrow>span.emnote{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;
+  line-height:36px;text-align:right;font-size:9.5px}
+.emnote-inline{display:none;font-family:'Spline Sans Mono',monospace;font-size:9.5px;font-weight:400}
+.emh{cursor:pointer;user-select:none;transition:.12s}
+.emh:hover{color:var(--ink)}
+.emh.on{color:var(--gold2)}
+.emh b{font-weight:400;font-size:8px;margin-left:3px;vertical-align:1px}
+/* two different failures, two different colours.
+   Scoped past .emrow>span, which sets the muted default for every cell. */
+.emrow>span.em-unsched,.em-unsched{color:var(--red)}
+.emrow>span.em-noshow,.em-noshow{color:var(--red2)}
+.emrow>span.lb-a{color:var(--gold2)}
+.emrow>span.lb-r{color:var(--red)}
 @media(max-width:820px){
   .lbrow,.lbhead{grid-template-columns:6px 26px minmax(0,1fr) 64px 72px}
   .lbrow>span.lbhide,.lbhead>span.lbhide,.lbhide{display:none}
   .emrow,.emhead{grid-template-columns:minmax(0,1fr) 56px 56px 52px}
-  .emhide{display:none}
+  .emrow>span.emhide,.emhead>span.emhide,.emhide{display:none}
+  .emnote-inline{display:block}
 }
 
 .empty{text-align:center;padding:40px 20px;color:var(--mut2);font-size:13px;line-height:1.6}
@@ -1425,7 +1450,7 @@ const LABOR = (() => {
   const sgnH  = n => (n>=0?'+':'-')+Math.abs(n).toFixed(0);
 
   let D=null, DATES=[], STORES=[], byStore={}, PERIODS=[], PWEEKS=[];
-  const S = { scope:'all', range:'yesterday', sort:'store', sortCol:null, sortDir:'desc', store:null,
+  const S = { scope:'all', range:'yesterday', sort:'store', sortCol:null, sortDir:'desc', empCol:null, empDir:'desc', store:null,
               selRows:new Set(), selOnly:false,
               selStore:null, custStores:new Set(), cStart:null, cEnd:null,
               selP:new Set(), selPW:new Set(), metric:'pct', trend:'daily', dow:null,
@@ -1859,10 +1884,21 @@ const LABOR = (() => {
       e.d = e.ah-e.sh;
       e.flag = (e.sh===0&&e.ah>0) ? 'not scheduled' : (e.sh>0&&e.ah===0) ? 'no show' : '';
       return e;
-    }).sort((x,y)=>{
-      const r=v=>v.flag==='not scheduled'?0:v.flag==='no show'?1:2;
-      return r(x)-r(y) || y.ot-x.ot || x.n.localeCompare(y.n);
     });
+    // worst first by default: biggest overage on top, so unscheduled hours lead
+    if(S.empCol){
+      const k=S.empCol, dir=S.empDir;
+      emps.sort((x,y)=>{ const a=x[k], b=y[k];
+        const c = (typeof a==='string') ? a.localeCompare(b) : (a||0)-(b||0);
+        return dir==='asc' ? c : -c; });
+    } else {
+      emps.sort((x,y)=> y.d-x.d || y.ot-x.ot || x.n.localeCompare(y.n));
+    }
+    const ehc = (k,label,cls) => {
+      const on = S.empCol===k;
+      return `<span class="emh ${cls}${on?' on':''}" data-ek="${k}">${label}`+
+             (on ? `<b>${S.empDir==='asc'?'▲':'▼'}</b>` : '') + `</span>`;
+    };
     const unsched = emps.filter(e=>e.flag==='not scheduled').reduce((s,e)=>s+e.ah,0);
     const noshow  = emps.filter(e=>e.flag==='no show').length;
 
@@ -1893,23 +1929,27 @@ const LABOR = (() => {
     h += `<div class="slist" style="overflow:visible"><div class="fcolhead">
       <div class="pl-h" style="border-bottom:none;padding-bottom:8px">
         <h3>Employees</h3><span class="tag printhide">${emps.length} people</span></div>
-      <div class="emhead"><span>Employee</span><span class="emhide">Job</span>
-        <span>Sched</span><span>Actual</span><span>Diff</span><span class="emhide">OT</span></div></div>`;
+      <div class="emhead">${ehc('n','Employee','')}${ehc('job','Job','emhide')}
+        ${ehc('sh','Sched','')}${ehc('ah','Actual','')}${ehc('d','Diff','')}
+        ${ehc('ot','OT','emhide')}${ehc('flag','Note','emhide')}</div></div>`;
     emps.forEach(e=>{
-      const c = e.flag==='not scheduled' ? 'lb-r' : e.flag==='no show' ? 'lb-r' : e.d>0 ? 'lb-a' : '';
+      const nc = e.flag==='not scheduled' ? 'em-unsched' : e.flag==='no show' ? 'em-noshow' : '';
+      const dc = e.flag ? nc : (e.d>0 ? 'lb-a' : '');
       h += `<div class="emrow">
-        <span class="emname">${e.n}${e.flag?`<span class="emjob lb-r">${e.flag}</span>`:''}</span>
-        <span class="emhide lb-m">${e.job||''}</span>
-        <span class="lb-m">${e.sh.toFixed(2)}</span>
-        <span>${e.ah.toFixed(2)}</span>
-        <span class="${c}">${e.d>=0?'+':''}${e.d.toFixed(2)}</span>
-        <span class="emhide ${e.ot>0?'lb-a':'lb-m'}">${e.ot?e.ot.toFixed(2):'—'}</span>
+        <span class="emname">${e.n}${e.flag?`<span class="emnote-inline ${nc}">${e.flag}</span>`:''}</span>
+        <span class="emhide emjob">${e.job||''}</span>
+        <span>${e.sh.toFixed(2)}</span>
+        <span style="color:var(--ink)">${e.ah.toFixed(2)}</span>
+        <span class="${dc}">${e.d>=0?'+':''}${e.d.toFixed(2)}</span>
+        <span class="emhide ${e.ot>0?'lb-a':''}">${e.ot?e.ot.toFixed(2):'—'}</span>
+        <span class="emhide emnote ${nc}">${e.flag||'—'}</span>
       </div>`;
     });
     h += `<div class="emrow lbtot"><span class="emname">Total</span><span class="emhide"></span>
-      <span class="lb-m">${o.sh.toFixed(2)}</span><span>${o.ah.toFixed(2)}</span>
-      <span class="${o.dH>0?'lb-r':'lb-g'}">${o.dH>=0?'+':''}${o.dH.toFixed(2)}</span>
-      <span class="emhide ${o.ot>0?'lb-a':'lb-m'}">${o.ot?o.ot.toFixed(2):'—'}</span></div></div>`;
+      <span>${o.sh.toFixed(2)}</span><span>${o.ah.toFixed(2)}</span>
+      <span class="${o.dH>0?'lb-r':''}">${o.dH>=0?'+':''}${o.dH.toFixed(2)}</span>
+      <span class="emhide ${o.ot>0?'lb-a':''}">${o.ot?o.ot.toFixed(2):'—'}</span>
+      <span class="emhide"></span></div></div>`;
 
     const R=$('laborResults'); R.innerHTML=h;
     R.classList.remove('fade'); void R.offsetWidth; R.classList.add('fade');
@@ -1976,6 +2016,12 @@ const LABOR = (() => {
     const act = e.target.closest('[data-act]');
     if(act && act.dataset.act==='only'){ S.selOnly=!S.selOnly; render(); return; }
     if(act && act.dataset.act==='clear'){ S.selRows.clear(); S.selOnly=false; render(); return; }
+
+    const eh=e.target.closest('.emh');
+    if(eh){ const k=eh.dataset.ek;
+      if(S.empCol===k) S.empDir = S.empDir==='asc' ? 'desc' : 'asc';
+      else { S.empCol=k; S.empDir = (k==='n'||k==='job'||k==='flag') ? 'asc' : 'desc'; }
+      render(); return; }
 
     const h=e.target.closest('.lbh');
     if(h){ const k=h.dataset.k;
