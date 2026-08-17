@@ -338,6 +338,10 @@ svg{width:100%;display:block;overflow:visible}
 .lbrow>span.lb-a{color:var(--gold2)}
 .lbrow>span.lb-r{color:var(--red)}
 .lbtot{border-top:1.5px solid var(--line2)}
+.lbtot-sub{border-top:1px solid var(--line)}
+.lbtot-sub>span,.lbtot-sub .lbname{color:var(--mut2)!important;font-weight:400!important}
+.lbtot-sub .lbverdict>span{background:none!important;color:var(--mut2)!important}
+.lbtot-sub>span{color:var(--mut2)!important;font-weight:400!important}
 .lbtot>span{font-weight:600;color:var(--ink)}
 /* Employee detail */
 /* same treatment as the store table: fixed row height, one signal column,
@@ -1806,6 +1810,7 @@ const LABOR = (() => {
 
     h += renderTrend(null);
 
+    const allRows = rows;
     const nSel = rows.filter(o=>S.selRows.has(o.sid)).length;
     if(S.selOnly && nSel) rows = rows.filter(o=>S.selRows.has(o.sid));
 
@@ -1858,20 +1863,32 @@ const LABOR = (() => {
       </div>`;
     });
 
-    h += `<div class="lbrow lbtot" style="cursor:default">
+    // A total that doesn't sum the rows above it reads as an error, so when the
+    // list is filtered the subtotal leads and the all-stores figure sits beneath.
+    const sumOf = list => {
+      const t = list.reduce((t,o)=>{['fc','sa','sh','ah','sd','pay'].forEach(k=>t[k]+=o[k]);
+        t.ex += (o.excess||0); return t;},{fc:0,sa:0,sh:0,ah:0,sd:0,pay:0,ex:0});
+      t.schP = t.fc?t.sd/t.fc*100:0; t.actP = t.sa?t.pay/t.sa*100:0;
+      return t;
+    };
+    const lbTotRow = (label,t,muted) => `<div class="lbrow lbtot${muted?' lbtot-sub':''}" style="cursor:default">
         <span class="lbstripe"></span><span class="lbsel printhide"></span>
-        <span class="lbname">Total</span>
-        <span class="lbhide">${money(T.fc)}</span><span class="lbhide">${money(T.sa)}</span>
-        <span class="lbhide">${sgn(T.sa-T.fc)}</span>
-        <span class="lbhide lbsep">${T.sh.toFixed(0)}</span><span class="lbhide">${T.ah.toFixed(0)}</span>
-        <span class="lbhide">${sgnH(T.ah-T.sh)}</span>
-        <span class="lbhide lbsep">${pctS(TschP)}</span><span class="lbhide">${pctS(TactP)}</span>
-        <span class="lbsep lbverdict ${TactP-TschP<=1?'':'lb-r'}">
-          <span>${sgnP(TactP-TschP)}</span></span>
-        <span class="lbverdict">${(()=>{const t=rows.reduce((a,b)=>a+(b.excess||0),0);
-          return t>0?money(t):'—';})()}</span>
+        <span class="lbname">${label}</span>
+        <span class="lbhide">${money(t.fc)}</span><span class="lbhide">${money(t.sa)}</span>
+        <span class="lbhide">${sgn(t.sa-t.fc)}</span>
+        <span class="lbhide lbsep">${t.sh.toFixed(0)}</span><span class="lbhide">${t.ah.toFixed(0)}</span>
+        <span class="lbhide">${sgnH(t.ah-t.sh)}</span>
+        <span class="lbhide lbsep">${pctS(t.schP)}</span><span class="lbhide">${pctS(t.actP)}</span>
+        <span class="lbsep lbverdict ${!muted&&t.actP-t.schP>1?'lb-r':''}">
+          <span>${sgnP(t.actP-t.schP)}</span></span>
+        <span class="lbverdict">${t.ex>0?money(t.ex):'—'}</span>
         <span class="lbhide"></span>
-      </div></div>`;
+      </div>`;
+    h += (rows.length !== allRows.length)
+      ? lbTotRow(`Selected (${rows.length})`, sumOf(rows), false)
+        + lbTotRow(`All ${allRows.length} stores`, sumOf(allRows), true)
+      : lbTotRow('Total', sumOf(rows), false);
+    h += `</div>`;
 
     const R=$('laborResults'); R.innerHTML=h;
     R.classList.remove('fade'); void R.offsetWidth; R.classList.add('fade');
@@ -1983,12 +2000,24 @@ const LABOR = (() => {
         <span class="emhide emnote ${nc}">${e.flag||'—'}</span>
       </div>`;
     });
-    h += `<div class="emrow lbtot"><span class="emsel printhide"></span>
-      <span class="emname">Total</span><span class="emhide"></span>
-      <span>${o.sh.toFixed(2)}</span><span>${o.ah.toFixed(2)}</span>
-      <span class="${o.dH>0?'lb-r':''}">${o.dH>=0?'+':''}${o.dH.toFixed(2)}</span>
-      <span class="emhide ${o.ot>0?'lb-a':''}">${o.ot?o.ot.toFixed(2):'—'}</span>
-      <span class="emhide"></span></div></div>`;
+    // When the list is filtered, a total that doesn't sum the visible rows reads
+    // as an error — so show the subtotal, and keep the store total beneath it.
+    const filtered = shownEmps.length !== emps.length;
+    const sub = shownEmps.reduce((a,e)=>({sh:a.sh+e.sh, ah:a.ah+e.ah, ot:a.ot+e.ot}),{sh:0,ah:0,ot:0});
+    const totRow = (label,sh,ah,ot,muted) => {
+      const d = ah-sh;
+      return `<div class="emrow lbtot${muted?' lbtot-sub':''}"><span class="emsel printhide"></span>
+        <span class="emname">${label}</span><span class="emhide"></span>
+        <span>${sh.toFixed(2)}</span><span>${ah.toFixed(2)}</span>
+        <span class="${!muted&&d>0?'lb-r':''}">${d>=0?'+':''}${d.toFixed(2)}</span>
+        <span class="emhide ${!muted&&ot>0?'lb-a':''}">${ot?ot.toFixed(2):'—'}</span>
+        <span class="emhide"></span></div>`;
+    };
+    h += filtered
+      ? totRow(`Selected (${shownEmps.length})`, sub.sh, sub.ah, sub.ot, false)
+        + totRow(`All ${emps.length} people`, o.sh, o.ah, o.ot, true)
+      : totRow('Total', o.sh, o.ah, o.ot, false);
+    h += `</div>`;
 
     const R=$('laborResults'); R.innerHTML=h;
     R.classList.remove('fade'); void R.offsetWidth; R.classList.add('fade');

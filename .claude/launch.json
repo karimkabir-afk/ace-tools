@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "ace-tools",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "-l", "3131", "."],
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "3131"],
       "port": 3131
     }
   ]
