@@ -14,7 +14,7 @@
   --ink:#eef3ee;--mut:#8fa394;--mut2:#5f7065;
   --gold:#d4a23a;--gold2:#e8bd5a;
   --grn:#5fcf80;--red:#e8736b;--red2:#cf5268;
-  --sig-a:#e8bd5a;--sig-r:#e8736b;
+  --sig-a:#e8bd5a;--sig-r:#e8736b;--violet:#b794f6;
   --tint-gold:rgba(212,162,58,.16);--tint-grn:rgba(95,207,128,.16);
   --tint-red:rgba(232,115,107,.14);--tint-red2:rgba(207,82,104,.16);
   --glow1:rgba(212,162,58,.06);--glow2:rgba(95,207,128,.04);
@@ -28,7 +28,7 @@
   --ink:#16201a;--mut:#5b6b5f;--mut2:#67756a;
   --gold:#9a7112;--gold2:#7d5c0d;
   --grn:#237f42;--red:#c03d34;--red2:#a02845;
-  --sig-a:#d1901a;--sig-r:#c03d34;
+  --sig-a:#d1901a;--sig-r:#c03d34;--violet:#6b46c1;
   --tint-gold:rgba(154,113,18,.13);--tint-grn:rgba(35,127,66,.12);
   --tint-red:rgba(192,61,52,.11);--tint-red2:rgba(160,40,69,.11);
   --glow1:rgba(212,162,58,.10);--glow2:rgba(95,207,128,.07);
@@ -342,7 +342,7 @@ svg{width:100%;display:block;overflow:visible}
 /* same treatment as the store table: fixed row height, one signal column,
    note moved out of the name cell so nothing wraps */
 .emrow,.emhead{display:grid;
-  grid-template-columns:minmax(104px,1.5fr) 84px 58px 58px 58px 52px 92px;
+  grid-template-columns:26px minmax(98px,1.5fr) 82px 56px 56px 56px 50px 88px;
   gap:0;align-items:stretch;border-bottom:1px solid rgba(38,52,43,.5)}
 .emrow:last-child{border-bottom:none}
 .emhead{font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:.06em;
@@ -351,10 +351,9 @@ svg{width:100%;display:block;overflow:visible}
   justify-content:flex-end;min-height:36px;
   font-family:'Spline Sans Mono',monospace;font-size:12px;color:var(--mut)}
 .emhead>span{min-height:0;padding-top:8px;padding-bottom:8px}
-.emhead>span:first-child{text-align:left;justify-content:flex-start}
-.emrow>span:first-child{text-align:left}
+.emhead>span:nth-child(2){text-align:left;justify-content:flex-start}
+.emrow>span:nth-child(2){text-align:left}
 .emrow>span:last-child,.emhead>span:last-child{padding-right:16px}
-.emhead>span:first-child,.emrow>span:first-child{padding-left:16px}
 .emrow .emname{font-family:'Spline Sans',sans-serif;font-size:12.5px;font-weight:500;
   color:var(--ink);flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;
   white-space:nowrap;overflow:hidden}
@@ -368,16 +367,21 @@ svg{width:100%;display:block;overflow:visible}
 .emh:hover{color:var(--ink)}
 .emh.on{color:var(--gold2)}
 .emh b{font-weight:400;font-size:8px;margin-left:3px;vertical-align:1px}
-/* two different failures, two different colours.
+/* two different failures, two different colours. Over-usage is red; a no-show
+   is violet because it is a different kind of problem, not a worse one.
    Scoped past .emrow>span, which sets the muted default for every cell. */
 .emrow>span.em-unsched,.em-unsched{color:var(--red)}
-.emrow>span.em-noshow,.em-noshow{color:var(--red2)}
+.emrow>span.em-noshow,.em-noshow{color:var(--violet)}
 .emrow>span.lb-a{color:var(--gold2)}
 .emrow>span.lb-r{color:var(--red)}
+/* employee selection */
+.emsel{justify-content:center!important;padding:0!important}
+.emsel input{accent-color:var(--gold);width:14px;height:14px;cursor:pointer;margin:0}
+.emrow.picked{background:var(--rowhov)}
 @media(max-width:820px){
   .lbrow,.lbhead{grid-template-columns:6px 26px minmax(0,1fr) 64px 72px}
   .lbrow>span.lbhide,.lbhead>span.lbhide,.lbhide{display:none}
-  .emrow,.emhead{grid-template-columns:minmax(0,1fr) 56px 56px 52px}
+  .emrow,.emhead{grid-template-columns:26px minmax(0,1fr) 54px 54px 50px}
   .emrow>span.emhide,.emhead>span.emhide,.emhide{display:none}
   .emnote-inline{display:block}
 }
@@ -1450,7 +1454,8 @@ const LABOR = (() => {
   const sgnH  = n => (n>=0?'+':'-')+Math.abs(n).toFixed(0);
 
   let D=null, DATES=[], STORES=[], byStore={}, PERIODS=[], PWEEKS=[];
-  const S = { scope:'all', range:'yesterday', sort:'store', sortCol:null, sortDir:'desc', empCol:null, empDir:'desc', store:null,
+  const S = { scope:'all', range:'yesterday', sort:'store', sortCol:null, sortDir:'desc', empCol:null, empDir:'desc',
+              selEmps:new Set(), empSelOnly:false, store:null,
               selRows:new Set(), selOnly:false,
               selStore:null, custStores:new Set(), cStart:null, cEnd:null,
               selP:new Set(), selPW:new Set(), metric:'pct', trend:'daily', dow:null,
@@ -1894,6 +1899,8 @@ const LABOR = (() => {
     } else {
       emps.sort((x,y)=> y.d-x.d || y.ot-x.ot || x.n.localeCompare(y.n));
     }
+    const nESel = emps.filter(e=>S.selEmps.has(e.n)).length;
+    const shownEmps = (S.empSelOnly && nESel) ? emps.filter(e=>S.selEmps.has(e.n)) : emps;
     const ehc = (k,label,cls) => {
       const on = S.empCol===k;
       return `<span class="emh ${cls}${on?' on':''}" data-ek="${k}">${label}`+
@@ -1928,14 +1935,26 @@ const LABOR = (() => {
 
     h += `<div class="slist" style="overflow:visible"><div class="fcolhead">
       <div class="pl-h" style="border-bottom:none;padding-bottom:8px">
-        <h3>Employees</h3><span class="tag printhide">${emps.length} people</span></div>
-      <div class="emhead">${ehc('n','Employee','')}${ehc('job','Job','emhide')}
+        <h3>Employees</h3>
+        <span style="display:flex;gap:7px;align-items:center">
+          ${nESel?`<button class="lbtogg${S.empSelOnly?' on':''}" data-eact="only">Selected only (${nESel})</button>
+                   <button class="lbtogg" data-eact="clear">Clear</button>`:''}
+          <span class="tag printhide">${emps.length} people</span>
+        </span></div>
+      <div class="emhead">
+        <span class="emsel printhide"><input type="checkbox" data-eact="all"
+          ${emps.length&&emps.every(e=>S.selEmps.has(e.n))?'checked':''}></span>
+        ${ehc('n','Employee','')}${ehc('job','Job','emhide')}
         ${ehc('sh','Sched','')}${ehc('ah','Actual','')}${ehc('d','Diff','')}
         ${ehc('ot','OT','emhide')}${ehc('flag','Note','emhide')}</div></div>`;
-    emps.forEach(e=>{
+    shownEmps.forEach(e=>{
       const nc = e.flag==='not scheduled' ? 'em-unsched' : e.flag==='no show' ? 'em-noshow' : '';
-      const dc = e.flag ? nc : (e.d>0 ? 'lb-a' : '');
-      h += `<div class="emrow">
+      // over half an hour above schedule reads as a miss; a no-show is violet
+      const dc = e.flag==='no show' ? 'em-noshow'
+               : (e.flag==='not scheduled' || e.d>0.5) ? 'em-unsched' : '';
+      h += `<div class="emrow${S.selEmps.has(e.n)?' picked':''}">
+        <span class="emsel printhide"><input type="checkbox" data-epick="${e.n.replace(/"/g,'&quot;')}"
+          ${S.selEmps.has(e.n)?'checked':''}></span>
         <span class="emname">${e.n}${e.flag?`<span class="emnote-inline ${nc}">${e.flag}</span>`:''}</span>
         <span class="emhide emjob">${e.job||''}</span>
         <span>${e.sh.toFixed(2)}</span>
@@ -1945,7 +1964,8 @@ const LABOR = (() => {
         <span class="emhide emnote ${nc}">${e.flag||'—'}</span>
       </div>`;
     });
-    h += `<div class="emrow lbtot"><span class="emname">Total</span><span class="emhide"></span>
+    h += `<div class="emrow lbtot"><span class="emsel printhide"></span>
+      <span class="emname">Total</span><span class="emhide"></span>
       <span>${o.sh.toFixed(2)}</span><span>${o.ah.toFixed(2)}</span>
       <span class="${o.dH>0?'lb-r':''}">${o.dH>=0?'+':''}${o.dH.toFixed(2)}</span>
       <span class="emhide ${o.ot>0?'lb-a':''}">${o.ot?o.ot.toFixed(2):'—'}</span>
@@ -2016,6 +2036,24 @@ const LABOR = (() => {
     const act = e.target.closest('[data-act]');
     if(act && act.dataset.act==='only'){ S.selOnly=!S.selOnly; render(); return; }
     if(act && act.dataset.act==='clear'){ S.selRows.clear(); S.selOnly=false; render(); return; }
+
+    const epick = e.target.closest('input[data-epick]');
+    if(epick){ e.stopPropagation();
+      const n=epick.dataset.epick;
+      S.selEmps.has(n) ? S.selEmps.delete(n) : S.selEmps.add(n);
+      if(!S.selEmps.size) S.empSelOnly=false;
+      render(); return; }
+    const eact = e.target.closest('[data-eact]');
+    if(eact){ e.stopPropagation();
+      const a=eact.dataset.eact;
+      if(a==='only'){ S.empSelOnly=!S.empSelOnly; }
+      else if(a==='clear'){ S.selEmps.clear(); S.empSelOnly=false; }
+      else if(a==='all'){
+        const box=eact; const on=box.checked;
+        [...document.querySelectorAll('input[data-epick]')].forEach(i=>{
+          on ? S.selEmps.add(i.dataset.epick) : S.selEmps.delete(i.dataset.epick); });
+        if(!S.selEmps.size) S.empSelOnly=false; }
+      render(); return; }
 
     const eh=e.target.closest('.emh');
     if(eh){ const k=eh.dataset.ek;
