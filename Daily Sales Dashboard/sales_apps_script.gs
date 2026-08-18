@@ -5,15 +5,26 @@
  *   ?           → { ok, data:[ … ], meta:{ … } }
  *   ?diag=1     → lists every tab and its headers, without reading data
  *
- * History: this used to read ss.getSheets()[0]. When an "Index" tab was added
- * in front of the data, the script happily read the index, found no columns,
- * and returned an empty array with ok:true — a silent outage. It now finds the
- * sheet by name, falls back to a header signature, and refuses to return an
- * empty payload quietly.
+ * History: this used to call getActiveSpreadsheet() and read getSheets()[0].
+ * Both assumptions broke at once when the workbook was reorganised — the binding
+ * went away and an "Index" tab appeared in front of the data — and the old code
+ * reported it as an empty array with ok:true, a silent outage. It now opens the
+ * book by ID, finds the tab by name with a header-signature fallback, and
+ * refuses to return an empty payload quietly.
  */
 
+/* "Daily Sales Summary Consolidated". Opened by ID rather than via
+   getActiveSpreadsheet(): this project is standalone, so there is no active
+   spreadsheet and the binding cannot be relied on. */
+var SHEET_ID   = '1IXE6L8oELtaRLSHpM4RXRSplqRVIIaIqSbFaHnwexCw';
 var SHEET_NAME = 'Sales';
 var REQUIRED   = ['Date', 'Total Net Sales'];   // header signature for the fallback
+
+function openBook() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  if (!ss) throw new Error('Could not open spreadsheet ' + SHEET_ID);
+  return ss;
+}
 
 function doGet(e) {
   var p = (e && e.parameter) || {};
@@ -54,7 +65,7 @@ function headersOf(sheet) {
 }
 
 function buildPayload() {
-  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var ss    = openBook();
   var sheet = findSheet(ss);
   var vals  = sheet.getDataRange().getValues();
   var hdrs  = vals[0].map(function (h) { return String(h).trim(); });
@@ -137,7 +148,7 @@ function buildPayload() {
 
 /** Tab lister — tells us what the script can actually see. */
 function diagnose() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = openBook();
   var out = ss.getSheets().map(function (s, i) {
     var hdrs = s.getLastColumn() ? headersOf(s) : [];
     return {
@@ -151,7 +162,7 @@ function diagnose() {
   });
   var chosen = null;
   try { chosen = findSheet(ss).getName(); } catch (err) { chosen = 'ERROR: ' + err.message; }
-  return { ok: true, workbook: ss.getName(), wouldRead: chosen, sheets: out };
+  return { ok: true, workbook: ss.getName(), sheetId: SHEET_ID, wouldRead: chosen, sheets: out };
 }
 
 function json(obj) {
