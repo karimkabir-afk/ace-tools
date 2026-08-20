@@ -596,6 +596,11 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
 </div>
 
 <div class="panel" id="foodPanel" style="display:none">
+  <span class="flabel">Scope</span>
+  <div class="seg" id="fdScope">
+    <button class="on" data-s="all">Portfolio</button>
+  </div>
+
   <span class="flabel">Count Date</span>
   <div class="range-row" style="gap:6px">
     <button class="fnav" id="fdPrev">‹</button>
@@ -710,6 +715,51 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
 </div>
 
 <script>
+/* ── Area Directors ────────────────────────────────────────────────────────
+   Shared by all three views. Store names are spelled differently across the
+   feeds — sales says "Louisville Rd" / "Glasgow" / "Nashville Rd" where labor
+   and food say "Louisville Road" / "Glassgow" / "Nashville Road" — so match on
+   a normalised key with those three aliases folded in, never on the raw name.
+   Source: the Store Details tab of the sales workbook.                       */
+const AD_LIST = ['Haley Bush','Brooke Wheat','Marcela Villanueva','Dawn Tetzlaff'];
+const AD_STORES = {
+  'Haley Bush':         ['Bardstown','Dixie','Etown','Fern Creek','Broadway','Interchange Dr'],
+  'Brooke Wheat':       ['Middletown','Paris Pike','Veterans','State Street','Fischer Park','Taylorsville'],
+  'Marcela Villanueva': ['1st Avenue','Newburg','Menards','Owensboro'],
+  'Dawn Tetzlaff':      ['Louisville Road','Glasgow','Nashville Road']
+};
+function adKey(s){
+  var k = String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  if(k==='louisvillerd') k='louisvilleroad';
+  if(k==='nashvillerd')  k='nashvilleroad';
+  if(k==='glassgow')     k='glasgow';
+  return k;
+}
+const AD_BY_STORE = (()=>{ const m={};
+  AD_LIST.forEach(ad => AD_STORES[ad].forEach(sn => { m[adKey(sn)] = ad; }));
+  return m; })();
+const adOf    = sn => AD_BY_STORE[adKey(sn)] || null;
+const isAD    = sc => typeof sc === 'string' && sc.slice(0,3) === 'ad:';
+const adName  = sc => sc.slice(3);
+/* Inject the AD buttons rather than hard-coding them into three scope rows, so
+   AD_STORES stays the only place the roster is written down. The seg handlers
+   are delegated on the container, so buttons added here wire themselves up. */
+function injectADButtons(segId, beforeSelector) {
+  const seg = document.getElementById(segId);
+  if (!seg) return;
+  const anchor = beforeSelector ? seg.querySelector(beforeSelector) : null;
+  AD_LIST.forEach(ad => {
+    const b = document.createElement('button');
+    b.dataset.s = 'ad:' + ad;
+    b.textContent = ad.split(' ')[0];      // first names, matching "Kevin"
+    b.title = ad + ' — ' + AD_STORES[ad].length + ' stores';
+    seg.insertBefore(b, anchor);
+  });
+}
+injectADButtons('scope',   '[data-s="store"]');
+injectADButtons('lbScope', '[data-s="store"]');
+injectADButtons('fdScope', null);
+
 /* ── Replace this URL with your deployed Apps Script URL ──────────────────── */
 const APPS_URL = 'https://script.google.com/macros/s/AKfycbxodxx9DHMd753fiJwMQKtSzDJCrjJ9hQ3dIxjtCaR_3PYwORxEpXCSsxnK1o6qdcwGXw/exec';
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -1017,6 +1067,7 @@ function initDashboard() {
       if(S.scope==='kevin')   return r.st===KEVIN_TYPE;
       if(S.scope==='dev')     return r.st===DEV_TYPE;
       if(S.scope==='carrols') return r.st===CARROLS_TYPE;
+      if(isAD(S.scope))       return adOf(r.sn)===adName(S.scope);
       if(S.scope==='store')   return r.sn===S.selStore;
       if(S.scope==='custom')  return S.customStores.has(r.sn);
       return true;
@@ -1270,6 +1321,7 @@ function initDashboard() {
       S.scope==='kevin'   ? 'Kevin Acquisition' :
       S.scope==='dev'     ? 'Development' :
       S.scope==='carrols' ? 'Carrols Acquisition' :
+      isAD(S.scope)       ? `${adName(S.scope)} — ${AD_STORES[adName(S.scope)].length} stores` :
       S.scope==='store'   ? S.selStore :
       S.scope==='custom'  ? `${S.customStores.size} store${S.customStores.size!==1?'s':''} selected` :
       'Portfolio';
@@ -1601,6 +1653,7 @@ const LABOR = (() => {
       const st = byStore[r.sid]; if(!st) return;
       if(S.scope==='store')       { if(r.sid!==S.selStore) return; }
       else if(S.scope==='custom') { if(!S.custStores.has(r.sid)) return; }
+      else if(isAD(S.scope))      { if(adOf(st.name)!==adName(S.scope)) return; }
       else if(S.scope!=='all')    { if(st.type!==S.scope) return; }
       const o = m[r.sid] || (m[r.sid]={sid:r.sid,name:st.name,fc:0,sa:0,sh:0,ah:0,ot:0,sd:0,pay:0,nosch:0,days:0});
       o.fc+=r.fc; o.sa+=r.sa; o.sh+=r.sh; o.ah+=r.ah; o.ot+=r.ot; o.sd+=r.sd; o.pay+=r.pay;
@@ -1642,6 +1695,7 @@ const LABOR = (() => {
       const st=byStore[r.sid]; if(!st) return false;
       if(S.scope==='store')  return r.sid===S.selStore;
       if(S.scope==='custom') return S.custStores.has(r.sid);
+      if(isAD(S.scope))      return adOf(st.name)===adName(S.scope);
       if(S.scope!=='all')    return st.type===S.scope;
       return true;
     });
@@ -1782,6 +1836,7 @@ const LABOR = (() => {
       S.scope==='all'    ? `All ${rows.length} stores` :
       S.scope==='store'  ? (byStore[S.selStore]||{}).name || '' :
       S.scope==='custom' ? `${S.custStores.size} store${S.custStores.size!==1?'s':''} selected` :
+      isAD(S.scope)      ? `${adName(S.scope)} — ${rows.length} stores` :
       S.scope.replace(' Stores','').replace(' Acquisition','');
     let h = `<div class="rhead">
       <div><div class="rtitle">Labor</div><div class="rscope">${scopeLbl}</div></div>
@@ -2167,7 +2222,14 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
   let FOOD = null;          // raw rows
   let DATES = [];           // sorted unique dates
   let ALL_STORES = [];      // every store ever seen
-  const F = { date:null, store:null, open:new Set(), loaded:false, loading:false };
+  const F = { date:null, store:null, open:new Set(), loaded:false, loading:false, scope:'all' };
+
+  // Stores in play for the current scope. Food rows carry names only, so the
+  // AD match runs through adKey() to absorb the Louisville/Glasgow/Nashville
+  // spelling differences between feeds.
+  const scopedStores = () => isAD(F.scope)
+    ? ALL_STORES.filter(sn => adOf(sn) === adName(F.scope))
+    : ALL_STORES;
 
   /* ── Print header/footer text ───────────────────────────────── */
   function setPrintMeta(v) {
@@ -2351,7 +2413,8 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
   }
 
   function renderPortfolio() {
-    const days = ALL_STORES.map(sn=>storeDay(sn, F.date));
+    const STORES = scopedStores();
+    const days = STORES.map(sn=>storeDay(sn, F.date));
     const counted = days.filter(d=>d.status==='counted');
     const totAct = counted.reduce((s,d)=>s+d.actd,0);
     const totTgt = counted.reduce((s,d)=>s+d.tgtd,0);
@@ -2369,12 +2432,12 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
 
     let h = `<div class="rhead">
       <div><div class="rtitle">Daily Food Count</div>
-      <div class="rscope">All ${ALL_STORES.length} stores</div></div>
+      <div class="rscope">${isAD(F.scope)?adName(F.scope)+' — '+STORES.length+' stores':'All '+STORES.length+' stores'}</div></div>
       <div class="rmeta">${fmtDFull(F.date)}</div>
     </div>`;
 
     h += `<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
-      <div class="kpi"><div class="lab">Counted</div><div class="v">${counted.length}<span style="color:var(--mut2);font-size:13px">/${ALL_STORES.length}</span></div></div>
+      <div class="kpi"><div class="lab">Counted</div><div class="v">${counted.length}<span style="color:var(--mut2);font-size:13px">/${STORES.length}</span></div></div>
       <div class="kpi"><div class="lab">Efficiency</div><div class="v">${effP}</div></div>
       <div class="kpi"><div class="lab">Vs Target</div><div class="v" style="color:${totVar>0?'var(--red)':Math.abs(totVar)<50?'var(--grn)':'var(--gold2)'}">${signDollar(totVar)}</div></div>
     </div>`;
@@ -2514,6 +2577,16 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
   }
 
   setPrintMeta(true); // sales is the default view
+
+  /* ── Scope wiring ───────────────────────────────────────────── */
+  $('fdScope').addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    [...$('fdScope').children].forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    F.scope = b.dataset.s;
+    F.store = null;              // a store open from another AD would be orphaned
+    renderFood();
+  });
 
   /* ── Date nav wiring ────────────────────────────────────────── */
   $('fdPrev').addEventListener('click', ()=>{
