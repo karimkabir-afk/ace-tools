@@ -327,10 +327,10 @@ svg{width:100%;display:block;overflow:visible}
   font-family:'Spline Sans Mono',monospace;transition:.14s}
 .lbtogg:hover{color:var(--ink);border-color:var(--gold)}
 .lbtogg.on{background:var(--card2);color:var(--gold2);border-color:var(--gold)}
-.lbh{cursor:pointer;user-select:none;transition:.12s}
-.lbh:hover{color:var(--ink)}
-.lbh.on{color:var(--gold2)}
-.lbh b{font-weight:400;font-size:8px;margin-left:3px;vertical-align:1px}
+.lbh,.fih{cursor:pointer;user-select:none;transition:.12s}
+.lbh:hover,.fih:hover{color:var(--ink)}
+.lbh.on,.fih.on{color:var(--gold2)}
+.lbh b,.fih b{font-weight:400;font-size:8px;margin-left:3px;vertical-align:1px}
 .lbsep{box-shadow:inset 1px 0 0 var(--line)}
 .lb-g{color:var(--grn)}.lb-a{color:var(--gold2)}.lb-r{color:var(--red)}.lb-m{color:var(--mut2)}
 /* must outrank .lbrow>span, which sets the muted default for every cell */
@@ -599,6 +599,12 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
   <span class="flabel">Scope</span>
   <div class="seg" id="fdScope">
     <button class="on" data-s="all">Portfolio</button>
+  </div>
+
+  <span class="flabel">Sort</span>
+  <div class="seg" id="fdSort">
+    <button class="on" data-s="worst">Worst first</button>
+    <button data-s="alpha">Alphabetical</button>
   </div>
 
   <span class="flabel">Count Date</span>
@@ -2222,7 +2228,8 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
   let FOOD = null;          // raw rows
   let DATES = [];           // sorted unique dates
   let ALL_STORES = [];      // every store ever seen
-  const F = { date:null, store:null, open:new Set(), loaded:false, loading:false, scope:'all' };
+  const F = { date:null, store:null, open:new Set(), loaded:false, loading:false, scope:'all',
+               sort:'worst', iCol:null, iDir:'desc' };
 
   // Stores in play for the current scope. Food rows carry names only, so the
   // AD match runs through adKey() to absorb the Louisville/Glasgow/Nashville
@@ -2422,13 +2429,17 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     const effP = totAct>0 ? pct(totTgt/totAct) : '—';
 
     // sort: stores that didn't count first, then fewest items on target
-    days.sort((a,b)=>{
-      const noData = d => (d.status==='absent'||d.status==='nocount') ? 1 : 0;
-      if(noData(b)!==noData(a)) return noData(b)-noData(a);
-      if(noData(a)) return a.sn.localeCompare(b.sn);
-      if(a.ratio!==b.ratio) return a.ratio-b.ratio;
-      return b.totI-a.totI;
-    });
+    if(F.sort==='alpha'){
+      days.sort((a,b)=>a.sn.localeCompare(b.sn));
+    } else {
+      days.sort((a,b)=>{
+        const noData = d => (d.status==='absent'||d.status==='nocount') ? 1 : 0;
+        if(noData(b)!==noData(a)) return noData(b)-noData(a);
+        if(noData(a)) return a.sn.localeCompare(b.sn);
+        if(a.ratio!==b.ratio) return a.ratio-b.ratio;
+        return b.totI-a.totI;
+      });
+    }
 
     let h = `<div class="rhead">
       <div><div class="rtitle">Daily Food Count</div>
@@ -2531,18 +2542,64 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
         row.classList.toggle('open');
       });
     });
+    R.querySelectorAll('.fih').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        const k = el.dataset.k;
+        if(F.iCol===k) F.iDir = F.iDir==='asc' ? 'desc' : 'asc';
+        else { F.iCol=k; F.iDir = k==='name' ? 'asc' : 'desc'; }
+        renderFood();
+      });
+    });
   }
+
+  /* Worst first ranks by problem severity, then by how many dollars are at
+     stake inside that band — a 61% item on $400 of usage matters more than a
+     61% item on $4, and efficiency alone can't tell them apart. */
+  const ITEM_RANK = {broken:0, nocount:1, serious:2, overuse:3, suspect:4, notarget:5, good:6};
 
   function renderItems(sd) {
     const items = sd.rows.map(r=>({r, flag:classifyItem(r)}))
       .filter(x=>x.flag)
-      .sort((a,b)=>a.r.item.localeCompare(b.r.item));
+      .map(x=>({
+        r: x.r, flag: x.flag,
+        name:   String(x.r.item||''),
+        act:    x.r.act===null ? null : +x.r.act,
+        tgt:    x.r.tgt===null ? null : +x.r.tgt,
+        eff:    x.flag.eff===undefined ? null : x.flag.eff,
+        rank:   ITEM_RANK[x.flag.key] ?? 9,
+        impact: Math.abs((x.r.actd||0) - (x.r.tgtd||0))
+      }));
     if(!items.length) return '';
+
+    if(F.iCol){
+      const k = F.iCol, dir = F.iDir;
+      items.sort((x,y)=>{
+        const a=x[k], b=y[k];
+        // blanks sort last whichever way the column is pointing
+        if(a===null && b===null) return x.name.localeCompare(y.name);
+        if(a===null) return 1;
+        if(b===null) return -1;
+        const c = (typeof a==='string') ? a.localeCompare(b) : a-b;
+        return dir==='asc' ? c : -c;
+      });
+    } else if(F.sort==='alpha'){
+      items.sort((a,b)=>a.name.localeCompare(b.name));
+    } else {
+      items.sort((a,b)=> a.rank!==b.rank ? a.rank-b.rank
+                       : b.impact!==a.impact ? b.impact-a.impact
+                       : a.name.localeCompare(b.name));
+    }
+
+    const ih = (k,label) => {
+      const on = F.iCol===k;
+      return `<span class="fih${on?' on':''}" data-k="${k}">${label}`+
+             (on ? `<b>${F.iDir==='asc'?'▲':'▼'}</b>` : '')+`</span>`;
+    };
 
     let h = `<div class="slist" style="overflow:visible"><div class="fcolhead">
       <div class="pl-h" style="border-bottom:none;padding-bottom:8px"><h3>Items</h3><span class="tag printhide">tap for detail</span></div>
       <div class="figrid-h">
-        <span>Item</span><span>Used</span><span>Target</span><span>Efficiency</span><span>Status</span>
+        ${ih('name','Item')}${ih('act','Used')}${ih('tgt','Target')}${ih('eff','Efficiency')}${ih('rank','Status')}
       </div>
     </div>`;
 
@@ -2585,6 +2642,15 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     b.classList.add('on');
     F.scope = b.dataset.s;
     F.store = null;              // a store open from another AD would be orphaned
+    renderFood();
+  });
+
+  $('fdSort').addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    [...$('fdSort').children].forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    F.sort = b.dataset.s;
+    F.iCol = null;                 // a preset overrides any column sort
     renderFood();
   });
 
