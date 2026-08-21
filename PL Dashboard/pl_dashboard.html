@@ -74,7 +74,7 @@ select{width:100%;background:var(--bg2);color:var(--ink);border:1px solid var(--
 
 /* Results */
 .results{padding:18px 14px 0}
-.rhead{display:flex;align-items:baseline;justify-content:space-between;margin:6px 4px 12px}
+.rhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 4px 12px;flex-wrap:wrap}
 .rtitle{font-family:'Fraunces',serif;font-size:21px;font-weight:600;letter-spacing:-.01em;line-height:1.1}
 .rscope{font-size:11px;color:var(--gold2);font-family:'Spline Sans Mono',monospace;margin-top:4px;
   text-transform:uppercase;letter-spacing:.06em}
@@ -735,7 +735,9 @@ function render(){
   $$('trendModeWrap').style.display = (multiStorePossible && isRange) ? 'block' : 'none';
 
   h+=`<div class="rhead"><div><div class="rtitle">${viewTitle()}</div><div class="rscope">${scopeLabel()}</div></div>
-      <div class="rmeta">${plabel}${S.cmp?'<br>vs '+clabel:''}</div></div>`;
+      <div class="rmeta">${plabel}${S.cmp?'<br>vs '+clabel:''}</div>
+      <button id="dlBtn" title="Download as CSV (opens in Excel)" style="margin-left:auto;padding:5px 12px;background:#1e2330;border:1px solid #3a4060;color:#8090b0;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;letter-spacing:0.03em;white-space:nowrap;" onmouseover="this.style.color='#fff';this.style.borderColor='#5a70a0'" onmouseout="this.style.color='#8090b0';this.style.borderColor='#3a4060'">&#8595; Export CSV</button>
+      </div>`;
 
   if(S.scope==='custom' && S.custom.size===0){ R.innerHTML=h+`<div class="empty">Pick one or more stores above to begin.<br>Use the +Legacy / +Kevin shortcuts to add a whole group.</div>`; return; }
   if(data.sales===0){ R.innerHTML=h+`<div class="empty">No data for this selection.<br>This store/group may not have been open in the chosen period.</div>`; return; }
@@ -764,6 +766,31 @@ function render(){
   R.innerHTML=h; R.classList.remove('fade'); void R.offsetWidth; R.classList.add('fade');
   const nb=$$('normBtn'); if(nb) nb.onclick=()=>{ S.cmpNorm=!S.cmpNorm; render(); };
   const pt=$$('pctTog'); if(pt) pt.onclick=(e)=>{ const b=e.target.closest('button'); if(!b)return; S.trendPct=(b.dataset.m==='pct'); render(); };
+  const dl=$$('dlBtn'); if(dl) dl.onclick=()=>downloadCSV(pset,plabel);
+}
+
+function downloadCSV(pset, plabel){
+  const cols=['Period','Store','Store ID','Type','Status','Sales','COGS (Food)','Labor','Royalty & Ad Fund','G&A','Utilities','R&M','Rent','4W EBITDA','CG&A','Company EBITDA','Interest','Principal','Net Income After P&I'];
+  const rows=[cols];
+  const filterFn = rowsFor(S.scope, S.store, pset);
+  const sorted = RAW.filter(filterFn).sort((a,b)=>a.year-b.year||a.pnum-b.pnum||a.store.localeCompare(b.store));
+  for(const r of sorted){
+    const ni = (r.ebitda||0)-(r.int||0)-(r.prin||0);
+    rows.push([
+      keyOf(r), r.store, r.id, r.type, r.status,
+      r.sales||0, r.cogs||0, r.labor||0, r.roy||0, r.ga||0,
+      r.util||0, r.rm||0, r.rent||0, r.e4w||0, r.cga||0,
+      r.ebitda||0, r.int||0, r.prin||0, ni
+    ]);
+  }
+  const csv = rows.map(r=>r.map(v=>typeof v==='string'&&v.includes(',')? `"${v}"`:v).join(',')).join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const safe = plabel.replace(/[^a-z0-9]+/gi,'-').replace(/-+$/,'');
+  a.download = `ACE_PL_${safe}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 let CTX={nP:1,nC:0,mismatch:false,norm:false,fP:1,fC:1};
 function viewTitle(){ return {pl:'Profit & Loss',sales:'Sales',cost:'Food & Labor',ga:'G&A',util:'Utilities',rm:'R&M',rent:'Rent',cga:'CG&A',pi:'Principal & Interest',e4w:'4-Wall EBITDA',ebitda:'Company EBITDA',nip:'Net Income after P&I'}[S.view]; }
