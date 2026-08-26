@@ -2809,6 +2809,24 @@ const SCORE = (() => {
 
   const fmt  = (v,dp,trim) => (v===null||v===undefined) ? '\u2014'
     : trim ? (+v).toFixed(dp).replace(/\.0$/,'') : (+v).toFixed(dp);
+
+  /* The monthly Period column is a real date in the sheet, so it arrives as a
+     Date and stringifies to "Sat Aug 01 2026 00:00:00 GMT-0400 (...)". Build
+     the label from Sort Key (202608 -> Aug 2026) rather than trusting the cell. */
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function perLabel(p){
+    const raw = String((p && p.per) || '').trim();
+    const looksLikeDate = /GMT|\d{2}:\d{2}:\d{2}/.test(raw) || /^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{4}/.test(raw);
+    if(!raw || looksLikeDate){
+      const sk = +(p && p.sk);
+      if(sk > 190000){
+        const y = Math.floor(sk/100), m = sk % 100;
+        if(m >= 1 && m <= 12) return MON[m-1] + ' ' + y;
+      }
+      return raw || '\u2014';
+    }
+    return raw.replace(/ RTD$/,'');
+  }
   const band = r => r===null ? 'm' : r>=4 ? 'g' : r>=3 ? 'a' : 'r';
   const bcol = b => b==='g' ? 'var(--grn)' : b==='a' ? 'var(--gold2)' : b==='r' ? 'var(--red)' : 'var(--mut)';
 
@@ -2865,7 +2883,7 @@ const SCORE = (() => {
   function chips(){
     $('scPeriods').innerHTML = D.periods.filter(p=>p.pt===S.type).map(p=>
       '<button class="chip'+(p.sk===S.sk?' on':'')+'" data-sk="'+p.sk+'">' +
-      '<span class="cdot"></span>'+p.per.replace(/ RTD$/,'')+'</button>').join('');
+      '<span class="cdot"></span>'+perLabel(p)+'</button>').join('');
   }
 
   /* Name the metric furthest below the group benchmark, in that metric's own
@@ -2934,7 +2952,7 @@ const SCORE = (() => {
 
     let h = '<div class="rhead"><div><div class="rtitle">Scorecard</div>' +
       '<div class="rscope">'+scopeLbl+'</div></div>' +
-      '<div class="rmeta">'+(S.type==='rtd'?'Round to date':'Monthly')+'<br>'+per.per+'</div></div>';
+      '<div class="rmeta">'+(S.type==='rtd'?'Round to date':'Monthly')+'<br>'+perLabel(per)+'</div></div>';
 
     // At group scope the brand's own rating is the headline; for a subset we
     // must compute one, and it is flagged as a mean so it is not mistaken for
@@ -3023,10 +3041,10 @@ const SCORE = (() => {
     h += '<div class="rhead"><div><div class="rtitle">'+nameOfSid(sid)+'</div>' +
       '<div class="rscope">'+((o&&o.gm)?o.gm:'GM not listed') +
       (adOfSid(sid)?' \u00b7 '+adOfSid(sid):'')+'</div></div>' +
-      '<div class="rmeta">'+(S.type==='rtd'?'Round to date':'Monthly')+'<br>'+per.per+'</div></div>';
+      '<div class="rmeta">'+(S.type==='rtd'?'Round to date':'Monthly')+'<br>'+perLabel(per)+'</div></div>';
 
     if(!o){
-      h += '<div class="empty">No scorecard row for this store in '+per.per+'.</div>';
+      h += '<div class="empty">No scorecard row for this store in '+perLabel(per)+'.</div>';
     } else {
       const b = band(o.rating);
       h += '<div class="hero"><div class="lab">Overall Rating</div>' +
@@ -3131,7 +3149,7 @@ const SCORE = (() => {
 
     const xlab = series.map((d,i)=>{
       if(i%step && i!==series.length-1) return '';
-      const t = String(d.per||'').replace(/ RTD$/,'').replace(/ 20(\d\d)$/,' $1');
+      const t = perLabel(d).replace(/ 20(\d\d)$/,' $1');
       return '<text x="'+xs(i).toFixed(1)+'" y="'+(H-9)+'" text-anchor="middle" font-size="8" '+
         'fill="var(--mut2)" font-family="&quot;Spline Sans Mono&quot;,monospace">'+t+'</text>';
     }).join('');
