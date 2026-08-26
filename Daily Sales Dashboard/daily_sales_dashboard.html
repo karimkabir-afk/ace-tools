@@ -512,6 +512,7 @@ svg{width:100%;display:block;overflow:visible}
 .scrow .scflags,.scrow .scweak{display:block;line-height:38px;text-align:right;
   overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .scrow .scweak{font-family:'Spline Sans',sans-serif;font-size:11px;color:var(--mut2)}
+.kcap{font-size:9.5px;color:var(--mut2);margin-top:3px;letter-spacing:.02em;font-family:'Spline Sans Mono',monospace}
 .sch{cursor:pointer;user-select:none;transition:.12s}
 .sch:hover{color:var(--ink)}
 .sch.on{color:var(--gold2)}
@@ -2798,17 +2799,24 @@ const SCORE = (() => {
   const METRICS = [
     {k:'rating', lab:'Rating', dir:+1, dp:1},
     {k:'acr',    lab:'ACR',    dir:-1, dp:1},
-    {k:'sos',    lab:'SOS',    dir:-1, dp:0},
+    {k:'sos',    lab:'SOS',    dir:-1, dp:1, trim:1},
     {k:'mi',     lab:'M&I',    dir:-1, dp:1},
-    {k:'cert',   lab:'Cert',   dir:+1, dp:0},
+    {k:'cert',   lab:'Cert',   dir:+1, dp:1, trim:1},
     {k:'rev',    lab:'REV',    dir:+1, dp:1}
   ];
   const SUB = METRICS.filter(m => m.k !== 'rating');
   const FLAGS = [{k:'rv',lab:'Roster'},{k:'msd',lab:'No speed data'},{k:'ltec',lab:'LTEC'}];
 
-  const fmt  = (v,dp) => (v===null||v===undefined) ? '\u2014' : (+v).toFixed(dp);
+  const fmt  = (v,dp,trim) => (v===null||v===undefined) ? '\u2014'
+    : trim ? (+v).toFixed(dp).replace(/\.0$/,'') : (+v).toFixed(dp);
   const band = r => r===null ? 'm' : r>=4 ? 'g' : r>=3 ? 'a' : 'r';
   const bcol = b => b==='g' ? 'var(--grn)' : b==='a' ? 'var(--gold2)' : b==='r' ? 'var(--red)' : 'var(--mut)';
+
+  /* Anything we average ourselves is an unweighted mean of store values, which
+     is not the same statistic as the brand's weighted group figure. Say so. */
+  const isGroup  = () => S.scope==='all';
+  const selLabel = () => S.scope==='store' ? nameOfSid(S.selStore)
+                   : isAD(S.scope) ? adName(S.scope)+' (mean)' : 'Selection';
 
   function ensure(){ if(!D.loaded && !D.loading) load(); else render(); }
 
@@ -2928,11 +2936,18 @@ const SCORE = (() => {
       '<div class="rscope">'+scopeLbl+'</div></div>' +
       '<div class="rmeta">'+(S.type==='rtd'?'Round to date':'Monthly')+'<br>'+per.per+'</div></div>';
 
+    // At group scope the brand's own rating is the headline; for a subset we
+    // must compute one, and it is flagged as a mean so it is not mistaken for
+    // an official figure.
+    const grpRating = avg ? avg.rating : null;
+    const headline  = isGroup() ? grpRating : mean;
+    const headCap   = isGroup() ? 'brand figure' : 'mean of '+rated.length+' stores';
     h += '<div class="kpis" style="grid-template-columns:repeat(4,1fr)">' +
       '<div class="kpi"><div class="lab">Overall Rating</div><div class="v" style="color:' +
-        bcol(mean===null?'m':band(mean)) + '">'+fmt(mean,2)+'</div></div>' +
+        bcol(headline===null?'m':band(headline)) + '">'+fmt(headline, isGroup()?1:2)+'</div>' +
+        '<div class="kcap">'+headCap+'</div></div>' +
       '<div class="kpi"><div class="lab">Group Average</div><div class="v" style="color:var(--mut)">' +
-        (avg?fmt(avg.rating,1):'\u2014')+'</div></div>' +
+        (avg?fmt(grpRating,1):'\u2014')+'</div><div class="kcap">brand, weighted</div></div>' +
       '<div class="kpi"><div class="lab">Under 3.0</div><div class="v" style="color:' +
         (under?'var(--red)':'var(--grn)')+'">'+under +
         '<span style="color:var(--mut2);font-size:13px">/'+rated.length+'</span></div></div>' +
@@ -2940,8 +2955,8 @@ const SCORE = (() => {
         (ltec?'var(--red)':'var(--grn)')+'">'+ltec+'</div></div>' +
     '</div>';
 
-    h += trendCard(seriesFor(rows.map(o=>o.sid)),
-                   (METRICS.find(m=>m.k===S.metric)||{}).lab + ' over time');
+    h += trendCard(seriesFor(rows.map(o=>o.sid), isGroup()),
+                   (METRICS.find(m=>m.k===S.metric)||{}).lab + ' over time', isGroup());
 
     const hc = (k,lab,cls) => {
       const on = S.col===k;
@@ -2965,7 +2980,7 @@ const SCORE = (() => {
         const a = avg ? avg[m.k] : null;
         // only call out a cell that is clearly off the benchmark, not merely below it
         const worse = (a!==null && a) && (m.dir>0 ? v < a*0.95 : v > a*1.05);
-        return '<span class="schide'+(worse?' sc-r':'')+'">'+fmt(v,m.dp)+'</span>';
+        return '<span class="schide'+(worse?' sc-r':'')+'">'+fmt(v,m.dp,m.trim)+'</span>';
       }).join('');
       h += '<div class="scrow st-'+b+'" data-sid="'+o.sid+'">' +
         '<span class="lbstripe"><i></i></span>' +
@@ -2980,7 +2995,7 @@ const SCORE = (() => {
       h += '<div class="scrow lbtot" style="cursor:default"><span class="lbstripe"></span>' +
         '<span class="scname"><span>Group average</span></span><span class="schide"></span>' +
         '<span class="scrate">'+fmt(avg.rating,1)+'</span>' +
-        SUB.map(m=>'<span class="schide">'+fmt(avg[m.k],m.dp)+'</span>').join('') +
+        SUB.map(m=>'<span class="schide">'+fmt(avg[m.k],m.dp,m.trim)+'</span>').join('') +
         '<span class="schide"></span><span class="schide"></span></div>';
     }
     h += '</div>';
@@ -3024,9 +3039,9 @@ const SCORE = (() => {
           const v=o[m.k], a=avg?avg[m.k]:null;
           const worse = (v!==null && a!==null && a) && (m.dir>0 ? v<a*0.95 : v>a*1.05);
           return '<div class="kpi"><div class="lab">'+m.lab+'</div><div class="v" style="color:' +
-            (v===null?'var(--mut)':worse?'var(--red)':'var(--ink)')+'">'+fmt(v,m.dp)+'</div>' +
+            (v===null?'var(--mut)':worse?'var(--red)':'var(--ink)')+'">'+fmt(v,m.dp,m.trim)+'</div>' +
             '<div style="font-size:10px;color:var(--mut2);font-family:\'Spline Sans Mono\',monospace;margin-top:2px">' +
-            'grp '+fmt(a,m.dp)+'</div></div>';
+            'grp '+fmt(a,m.dp,m.trim)+'</div></div>';
         }).join('') + '</div>';
 
       const on = FLAGS.filter(f=>o[f.k]===1);
@@ -3035,8 +3050,8 @@ const SCORE = (() => {
         on.map(f=>'<span class="scflag">'+f.lab+'</span>').join('') + '</div></div>';
     }
 
-    h += trendCard(seriesFor([sid]),
-                   (METRICS.find(m=>m.k===S.metric)||{}).lab + ' over time');
+    h += trendCard(seriesFor([sid], false),
+                   (METRICS.find(m=>m.k===S.metric)||{}).lab + ' over time', false);
 
     const R=$('scoreResults'); R.innerHTML=h;
     R.classList.remove('fade'); void R.offsetWidth; R.classList.add('fade');
@@ -3048,7 +3063,7 @@ const SCORE = (() => {
      the chart. The gold line is whatever is in scope; the dashed line is the
      brand's own group average for the same periods, which keeps a portfolio
      dip readable as "everyone" or "us". */
-  function seriesFor(sids){
+  function seriesFor(sids, official){
     const want = sids ? new Set(sids) : null;
     const per = D.periods.filter(p=>p.pt===S.type).slice().sort((a,b)=>a.sk-b.sk);
     const k = S.metric;
@@ -3056,15 +3071,18 @@ const SCORE = (() => {
       const at = D.rows.filter(r=>r.pt===S.type && r.sk===p.sk);
       const mine = at.filter(r=>!r.avg && (!want || want.has(r.sid)) && r[k]!==null);
       const g = at.find(r=>r.avg);
+      const grp = (g && g[k]!==null) ? g[k] : null;
       return {
         sk:p.sk, per:p.per,
-        val: mine.length ? mine.reduce((t,r)=>t+r[k],0)/mine.length : null,
-        grp: g && g[k]!==null ? g[k] : null
+        // the brand's group figure is weighted; our mean is not, so prefer
+        // theirs whenever the selection is the whole group
+        val: official ? grp : (mine.length ? mine.reduce((t,r)=>t+r[k],0)/mine.length : null),
+        grp: grp
       };
     }).filter(d=>d.val!==null || d.grp!==null);
   }
 
-  function trendCard(series, heading){
+  function trendCard(series, heading, twin){
     if(series.length < 2) return '';
     const m = METRICS.find(x=>x.k===S.metric);
     const W=680, H=210, PL=38, PR=16, PT=24, PB=30;
@@ -3086,7 +3104,7 @@ const SCORE = (() => {
       '<line x1="'+PL+'" x2="'+(W-PR)+'" y1="'+ys(v).toFixed(1)+'" y2="'+ys(v).toFixed(1)+'" '+
       'stroke="var(--line)" stroke-width="1"/><text x="'+(PL-6)+'" y="'+(ys(v)+3).toFixed(1)+'" '+
       'text-anchor="end" font-size="8.5" fill="var(--mut2)" '+
-      'font-family="&quot;Spline Sans Mono&quot;,monospace">'+v.toFixed(m.dp)+'</text>').join('');
+      'font-family="&quot;Spline Sans Mono&quot;,monospace">'+fmt(v,m.dp,m.trim)+'</text>').join('');
 
     const line = (key,stroke,dash) => {
       const pts = series.map((d,i)=>d[key]===null?null:[xs(i),ys(d[key])]).filter(Boolean);
@@ -3108,7 +3126,7 @@ const SCORE = (() => {
       if(d.val===null || (i%step && i!==series.length-1)) return '';
       return '<text x="'+xs(i).toFixed(1)+'" y="'+(ys(d.val)-8).toFixed(1)+'" text-anchor="middle" '+
         'font-size="9" fill="var(--mut)" font-family="&quot;Spline Sans Mono&quot;,monospace">'+
-        d.val.toFixed(m.dp)+'</text>';
+        fmt(d.val,m.dp,m.trim)+'</text>';
     }).join('');
 
     const xlab = series.map((d,i)=>{
@@ -3122,14 +3140,15 @@ const SCORE = (() => {
       '<span class="tag">'+(S.type==='rtd'?'Round to date':'Monthly')+' \u00b7 '+series.length+'</span></div>'+
       '<div class="chart" style="padding:6px 10px 2px"><svg viewBox="0 0 '+W+' '+H+'" '+
       'preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto">'+
-      grid + line('grp','var(--mut2)',true) + line('val','var(--gold)',false) + dots + labs + xlab +
+      grid + (twin ? '' : line('grp','var(--mut2)',true)) + line('val','var(--gold)',false) + dots + labs + xlab +
       '</svg></div>'+
       '<div class="scrub-hint" style="opacity:.8;padding:0 16px 12px">'+
       '<span style="display:inline-flex;align-items:center;gap:5px">'+
       '<span style="width:14px;height:0;border-top:2px solid var(--gold)"></span>'+
-      (S.store ? nameOfSid(S.store) : 'Selection')+'</span>'+
-      '<span style="display:inline-flex;align-items:center;gap:5px;margin-left:14px">'+
-      '<span style="width:14px;height:0;border-top:2px dashed var(--mut2)"></span>Group average</span>'+
+      (twin ? 'Group average (brand)' : S.store ? nameOfSid(S.store) : selLabel())+'</span>'+
+      (twin ? '' :
+        '<span style="display:inline-flex;align-items:center;gap:5px;margin-left:14px">'+
+        '<span style="width:14px;height:0;border-top:2px dashed var(--mut2)"></span>Group average</span>')+
       '</div></div>';
   }
 
