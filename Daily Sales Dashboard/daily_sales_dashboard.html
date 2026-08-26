@@ -478,6 +478,46 @@ svg{width:100%;display:block;overflow:visible}
   .kpis,.hero,.chart{break-inside:avoid;page-break-inside:avoid}
   .fiexp{display:none!important}
 }
+
+/* ── Scorecard ─────────────────────────────────────────────────── */
+.scrow,.schead{display:grid;gap:0;align-items:stretch;
+  grid-template-columns:6px minmax(96px,1.3fr) minmax(90px,1fr) 56px 52px 50px 46px 48px 52px 118px 128px}
+.scrow{border-bottom:1px solid rgba(38,52,43,.5);cursor:pointer;transition:.12s}
+.scrow:last-child{border-bottom:none}
+.scrow:hover{background:var(--rowhov)}
+.schead{font-size:9px;color:var(--mut2);text-transform:uppercase;letter-spacing:.06em;
+  padding:0 0 8px;border-bottom:1px solid var(--line)}
+.schead>span,.scrow>span{padding:0 7px;text-align:right;display:flex;align-items:center;
+  justify-content:flex-end;min-height:38px}
+.schead>span{min-height:0;padding-top:8px;padding-bottom:8px}
+.schead>span:nth-child(2),.schead>span:nth-child(3){text-align:left;justify-content:flex-start}
+.scrow>span:last-child,.schead>span:last-child{padding-right:16px}
+.scrow>span{font-family:'Spline Sans Mono',monospace;font-size:12px;color:var(--mut)}
+.scrow .scname{font-family:'Spline Sans',sans-serif;font-size:13px;font-weight:500;
+  color:var(--ink);text-align:left;justify-content:center;flex-direction:column;align-items:flex-start}
+.scrow .scname>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.scrow .scgm{font-family:'Spline Sans',sans-serif;font-size:11.5px;color:var(--mut2);
+  text-align:left;justify-content:flex-start;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:block;line-height:38px}
+.scrow .scrate{font-size:14px;font-weight:600}
+.scrow>span.sc-g{color:var(--grn)}
+.scrow>span.sc-a{color:var(--gold2)}
+.scrow>span.sc-r{color:var(--red)}
+.scrow>span.sc-m{color:var(--mut2)}
+.scrow.st-r .lbstripe i{background:var(--sig-r)}
+.scrow.st-a .lbstripe i{background:var(--sig-a)}
+.scrow.st-g .lbstripe i{background:var(--grn)}
+.scflag{display:inline-block;background:var(--tint-red,rgba(232,115,107,.16));color:var(--red);
+  font-size:9.5px;font-weight:600;padding:2px 6px;border-radius:9px;margin-left:4px;
+  font-family:'Spline Sans',sans-serif;letter-spacing:.01em}
+.scrow .scflags,.scrow .scweak{display:block;line-height:38px;text-align:right;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.scrow .scweak{font-family:'Spline Sans',sans-serif;font-size:11px;color:var(--mut2)}
+.sch{cursor:pointer;user-select:none;transition:.12s}
+.sch:hover{color:var(--ink)}
+.sch.on{color:var(--gold2)}
+.sch b{font-weight:400;font-size:8px;margin-left:3px;vertical-align:1px}
+@media(max-width:820px){ .scrow>span.schide,.schead>span.schide{display:none}
+  .scrow,.schead{grid-template-columns:6px minmax(90px,1fr) 60px} }
 </style>
 <script>
 /* Applied before first paint so the page never flashes the wrong theme. */
@@ -506,6 +546,7 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
     <button class="on" data-v="sales">Sales</button>
     <button data-v="food">Food</button>
     <button data-v="labor">Labor</button>
+    <button data-v="score">Scorecard</button>
   </div>
 </header>
 
@@ -619,6 +660,41 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
   </div>
 </div>
 
+<div class="panel" id="scorePanel" style="display:none">
+  <span class="flabel">Scope</span>
+  <div class="seg" id="scScope">
+    <button class="on" data-s="all">Portfolio</button>
+    <button data-s="store">Single store</button>
+  </div>
+  <div id="scStoreWrap" style="display:none;margin-top:10px">
+    <select id="scStoreSel"></select>
+  </div>
+
+  <span class="flabel">Period Type</span>
+  <div class="seg" id="scType">
+    <button class="on" data-t="rtd">Round to date</button>
+    <button data-t="mo">Monthly</button>
+  </div>
+
+  <span class="flabel">Period</span>
+  <div class="chips" id="scPeriods"></div>
+
+  <span class="flabel">Sort</span>
+  <div class="seg" id="scSort">
+    <button class="on" data-s="worst">Worst first</button>
+    <button data-s="name">Store order</button>
+  </div>
+
+  <div style="margin-top:16px;font-family:'Spline Sans Mono',monospace;font-size:11px;
+    color:var(--mut2);line-height:1.7">
+    Overall Rating out of 5.<br>
+    4.0+ good &middot; 3.0&ndash;3.9 attention<br>&middot; under 3.0 a miss.<br><br>
+    Higher is better: Rating, Cert, REV.<br>
+    Lower is better: ACR, SOS, M&amp;I.<br>
+    A Y flag always reads as bad.
+  </div>
+</div>
+
 <div class="panel" id="laborPanel" style="display:none">
   <span class="flabel">Scope</span>
   <div class="seg" id="lbScope">
@@ -713,6 +789,7 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
   <div class="results" id="results"></div>
   <div class="results" id="foodResults" style="display:none"></div>
   <div class="results" id="laborResults" style="display:none"></div>
+  <div class="results" id="scoreResults" style="display:none"></div>
   <div class="printfoot">
     <span id="phLegend"></span>
     <span id="phStamp"></span>
@@ -741,6 +818,31 @@ function adKey(s){
   if(k==='glassgow')     k='glasgow';
   return k;
 }
+/* Scorecard rows identify stores by id only, so keep an id-keyed view too. */
+const STORE_META = {
+  '5671':{n:'Bardstown',      ad:'Haley Bush'},
+  '5745':{n:'Dixie',          ad:'Haley Bush'},
+  '5890':{n:'Etown',          ad:'Haley Bush'},
+  '12683':{n:'Fern Creek',    ad:'Haley Bush'},
+  '14841':{n:'Broadway',      ad:'Haley Bush'},
+  '14795':{n:'Interchange Dr',ad:'Haley Bush'},
+  '11848':{n:'Middletown',    ad:'Brooke Wheat'},
+  '12107':{n:'Paris Pike',    ad:'Brooke Wheat'},
+  '12189':{n:'Veterans',      ad:'Brooke Wheat'},
+  '12461':{n:'State Street',  ad:'Brooke Wheat'},
+  '15309':{n:'Fischer Park',  ad:'Brooke Wheat'},
+  '15743':{n:'Taylorsville',  ad:'Brooke Wheat'},
+  '11413':{n:'1st Avenue',    ad:'Marcela Villanueva'},
+  '13424':{n:'Newburg',       ad:'Marcela Villanueva'},
+  '13517':{n:'Menards',       ad:'Marcela Villanueva'},
+  '12323':{n:'Owensboro',     ad:'Marcela Villanueva'},
+  '12932':{n:'Louisville Road',ad:'Dawn Tetzlaff'},
+  '13205':{n:'Glasgow',       ad:'Dawn Tetzlaff'},
+  '13516':{n:'Nashville Road',ad:'Dawn Tetzlaff'}
+};
+const nameOfSid = sid => (STORE_META[String(sid)]||{}).n || String(sid);
+const adOfSid   = sid => (STORE_META[String(sid)]||{}).ad || null;
+
 const AD_BY_STORE = (()=>{ const m={};
   AD_LIST.forEach(ad => AD_STORES[ad].forEach(sn => { m[adKey(sn)] = ad; }));
   return m; })();
@@ -765,6 +867,7 @@ function injectADButtons(segId, beforeSelector) {
 injectADButtons('scope',   '[data-s="store"]');
 injectADButtons('lbScope', '[data-s="store"]');
 injectADButtons('fdScope', null);
+injectADButtons('scScope', '[data-s="store"]');
 
 /* ── Replace this URL with your deployed Apps Script URL ──────────────────── */
 const APPS_URL = 'https://script.google.com/macros/s/AKfycbxodxx9DHMd753fiJwMQKtSzDJCrjJ9hQ3dIxjtCaR_3PYwORxEpXCSsxnK1o6qdcwGXw/exec';
@@ -1498,6 +1601,8 @@ function initDashboard() {
     apply(cur);
   });
 })();
+
+
 </script>
 
 <script>
@@ -2257,19 +2362,24 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     const v = btn.dataset.v; if(v===VIEW) return;
     VIEW = v;
     [...$('viewSwitch').children].forEach(b=>b.classList.toggle('on', b.dataset.v===v));
-    const sales=v==='sales', food=v==='food', labor=v==='labor';
+    const sales=v==='sales', food=v==='food', labor=v==='labor', score=v==='score';
     $('salesPanel').style.display   = sales?'':'none';
     $('results').style.display      = sales?'':'none';
     $('foodPanel').style.display    = food?'':'none';
     $('foodResults').style.display  = food?'':'none';
     $('laborPanel').style.display   = labor?'':'none';
     $('laborResults').style.display = labor?'':'none';
-    $('brandSub').textContent = sales?'Daily Sales':food?'Daily Food':'Daily Labor';
-    $('tagline').textContent  = sales?'Daily Sales Dashboard':food?'Daily Food Count Dashboard':'Daily Labor Dashboard';
-    document.title = 'ACE Brands · ' + (sales?'Daily Sales':food?'Daily Food':'Daily Labor');
+    $('scorePanel').style.display   = score?'':'none';
+    $('scoreResults').style.display = score?'':'none';
+    const sub = sales?'Daily Sales':food?'Daily Food':labor?'Daily Labor':'Scorecard';
+    $('brandSub').textContent = sub;
+    $('tagline').textContent  = sales?'Daily Sales Dashboard':food?'Daily Food Count Dashboard'
+                              :labor?'Daily Labor Dashboard':'Brand Scorecard';
+    document.title = 'ACE Brands · ' + sub;
     setPrintMeta(v);
     if(labor) LABOR.ensure();
     if(food && !F.loaded && !F.loading) loadFood();
+    if(score) SCORE.ensure();
   });
 
   /* ── Data ───────────────────────────────────────────────────── */
@@ -2662,6 +2772,315 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     const i=DATES.indexOf(F.date); if(i<DATES.length-1){ F.date=DATES[i+1]; renderFood(); }
   });
 })();
+/* == Brand Scorecard =======================================================
+   One row per store per period, monthly or round-to-date, from the Scorecard
+   tab of the sales workbook. The tab ships its own "Selected Group Average"
+   row, so the benchmark is the brand's own rather than one we invented.    */
+const SCORE = (() => {
+  const $ = id => document.getElementById(id);
+  const SC_URL = APPS_URL + '?data=scorecard';
+  const D = { rows:[], periods:[], loaded:false, loading:false };
+  const S = { scope:'all', selStore:'', type:'rtd', sk:null, sort:'worst',
+              col:null, dir:'desc', store:null };
+
+  /* dir:+1 means higher is better. Confirmed against Overall Rating
+     across ~500 rows rather than assumed from the column names. */
+  const METRICS = [
+    {k:'rating', lab:'Rating', dir:+1, dp:1},
+    {k:'acr',    lab:'ACR',    dir:-1, dp:1},
+    {k:'sos',    lab:'SOS',    dir:-1, dp:0},
+    {k:'mi',     lab:'M&I',    dir:-1, dp:1},
+    {k:'cert',   lab:'Cert',   dir:+1, dp:0},
+    {k:'rev',    lab:'REV',    dir:+1, dp:1}
+  ];
+  const SUB = METRICS.filter(m => m.k !== 'rating');
+  const FLAGS = [{k:'rv',lab:'Roster'},{k:'msd',lab:'No speed data'},{k:'ltec',lab:'LTEC'}];
+
+  const fmt  = (v,dp) => (v===null||v===undefined) ? '\u2014' : (+v).toFixed(dp);
+  const band = r => r===null ? 'm' : r>=4 ? 'g' : r>=3 ? 'a' : 'r';
+  const bcol = b => b==='g' ? 'var(--grn)' : b==='a' ? 'var(--gold2)' : b==='r' ? 'var(--red)' : 'var(--mut)';
+
+  function ensure(){ if(!D.loaded && !D.loading) load(); else render(); }
+
+  async function load(){
+    D.loading = true;
+    $('scoreResults').innerHTML =
+      '<div class="empty"><div class="spinner" style="margin:0 auto 14px"></div>Loading scorecard\u2026</div>';
+    try {
+      const c = new AbortController(); const t = setTimeout(()=>c.abort(), 90000);
+      let resp;
+      try { resp = await fetch(SC_URL, {redirect:'follow', cache:'no-store', signal:c.signal}); }
+      catch(err){ clearTimeout(t);
+        throw new Error(err.name==='AbortError' ? 'Request timed out after 90s.' : err.message); }
+      clearTimeout(t);
+      if(!resp.ok) throw new Error('HTTP '+resp.status);
+      const j = await resp.json();
+      if(j.ok === false) throw new Error(j.error || 'Scorecard endpoint returned an error');
+      D.rows = j.rows || [];
+      if(!D.rows.length) throw new Error('Scorecard returned no rows');
+
+      const seen = new Map();
+      D.rows.forEach(r=>{ const k = r.pt+'|'+r.sk;
+        if(!seen.has(k)) seen.set(k,{pt:r.pt, sk:r.sk, per:r.per}); });
+      D.periods = [...seen.values()].sort((a,b)=>b.sk-a.sk);
+      const first = D.periods.find(p=>p.pt===S.type) || D.periods[0];
+      S.type = first.pt; S.sk = first.sk;
+      D.loaded = true; D.loading = false;
+      buildStoreSel(); render();
+    } catch(err){
+      D.loading = false;
+      $('scoreResults').innerHTML =
+        '<div class="empty"><b style="color:var(--red)">Scorecard unavailable</b><br>' +
+        '<span style="font-size:12px;color:var(--mut2)">' + err.message + '</span><br>' +
+        '<span style="font-size:11px;color:var(--mut2)">If the endpoint was just updated, deploy a new version.</span></div>';
+    }
+  }
+
+  function buildStoreSel(){
+    const ids = [...new Set(D.rows.filter(r=>!r.avg).map(r=>r.sid))]
+      .sort((a,b)=>nameOfSid(a).localeCompare(nameOfSid(b)));
+    if(!S.selStore) S.selStore = ids[0];
+    $('scStoreSel').innerHTML = ids.map(id=>
+      '<option value="'+id+'"'+(id===S.selStore?' selected':'')+'>'+nameOfSid(id)+'</option>').join('');
+  }
+
+  function chips(){
+    $('scPeriods').innerHTML = D.periods.filter(p=>p.pt===S.type).map(p=>
+      '<button class="chip'+(p.sk===S.sk?' on':'')+'" data-sk="'+p.sk+'">' +
+      '<span class="cdot"></span>'+p.per.replace(/ RTD$/,'')+'</button>').join('');
+  }
+
+  /* Name the metric furthest below the group benchmark, in that metric's own
+     units, so the column says why a store is where it is. */
+  function weakest(o, avg){
+    if(o.ltec===1) return 'LTEC failure';
+    let worst=null, gap=0;
+    SUB.forEach(m=>{
+      const v=o[m.k], a=avg? avg[m.k] : null;
+      if(v===null || a===null || !a) return;
+      const rel = m.dir>0 ? (a-v)/Math.abs(a) : (v-a)/Math.abs(a);
+      if(rel>gap){ gap=rel; worst=m; }
+    });
+    if(!worst && o.rv===1) return 'roster variance';
+    // lower-is-better metrics are worse when ABOVE the benchmark, so say so
+    return worst ? worst.lab + (worst.dir>0 ? ' below group' : ' above group') : '';
+  }
+
+  function scoped(){
+    let rows = D.rows.filter(r=>r.pt===S.type && r.sk===S.sk && !r.avg)
+                     .map(r=>Object.assign({}, r, {name:nameOfSid(r.sid), ad:adOfSid(r.sid)}));
+    if(S.scope==='store') rows = rows.filter(o=>o.sid===S.selStore);
+    else if(isAD(S.scope)) rows = rows.filter(o=>o.ad===adName(S.scope));
+    return rows;
+  }
+
+  function render(){
+    if(!D.loaded) return;
+    chips();
+    $('scStoreWrap').style.display = S.scope==='store' ? 'block' : 'none';
+
+    const per = D.periods.find(p=>p.pt===S.type && p.sk===S.sk) || {per:''};
+    const avg = D.rows.find(r=>r.pt===S.type && r.sk===S.sk && r.avg) || null;
+
+    if(S.store){ renderStore(avg, per); return; }
+    let rows = scoped();
+
+    if(S.col){
+      const k=S.col, dir=S.dir;
+      rows.sort((x,y)=>{
+        const a=x[k], b=y[k];
+        if((a===null||a==='') && (b===null||b==='')) return x.name.localeCompare(y.name);
+        if(a===null||a==='') return 1;
+        if(b===null||b==='') return -1;
+        const c = (typeof a==='string') ? a.localeCompare(b) : a-b;
+        return dir==='asc' ? c : -c;
+      });
+    } else if(S.sort==='name'){
+      rows.sort((a,b)=>a.name.localeCompare(b.name));
+    } else {
+      rows.sort((a,b)=>{
+        const ra = a.rating===null?99:a.rating, rb = b.rating===null?99:b.rating;
+        if(ra!==rb) return ra-rb;
+        return (b.ltec||0)-(a.ltec||0);
+      });
+    }
+
+    const rated = rows.filter(o=>o.rating!==null);
+    const mean  = rated.length ? rated.reduce((s,o)=>s+o.rating,0)/rated.length : null;
+    const under = rated.filter(o=>o.rating<3).length;
+    const ltec  = rows.filter(o=>o.ltec===1).length;
+
+    const scopeLbl = S.scope==='all' ? 'All '+rows.length+' stores'
+                   : S.scope==='store' ? nameOfSid(S.selStore)
+                   : isAD(S.scope) ? adName(S.scope)+' \u2014 '+rows.length+' stores' : '';
+
+    let h = '<div class="rhead"><div><div class="rtitle">Scorecard</div>' +
+      '<div class="rscope">'+scopeLbl+'</div></div>' +
+      '<div class="rmeta">'+(S.type==='rtd'?'Round to date':'Monthly')+'<br>'+per.per+'</div></div>';
+
+    h += '<div class="kpis" style="grid-template-columns:repeat(4,1fr)">' +
+      '<div class="kpi"><div class="lab">Overall Rating</div><div class="v" style="color:' +
+        bcol(mean===null?'m':band(mean)) + '">'+fmt(mean,2)+'</div></div>' +
+      '<div class="kpi"><div class="lab">Group Average</div><div class="v" style="color:var(--mut)">' +
+        (avg?fmt(avg.rating,1):'\u2014')+'</div></div>' +
+      '<div class="kpi"><div class="lab">Under 3.0</div><div class="v" style="color:' +
+        (under?'var(--red)':'var(--grn)')+'">'+under +
+        '<span style="color:var(--mut2);font-size:13px">/'+rated.length+'</span></div></div>' +
+      '<div class="kpi"><div class="lab">LTEC Failures</div><div class="v" style="color:' +
+        (ltec?'var(--red)':'var(--grn)')+'">'+ltec+'</div></div>' +
+    '</div>';
+
+    const hc = (k,lab,cls) => {
+      const on = S.col===k;
+      return '<span class="sch '+(cls||'')+(on?' on':'')+'" data-k="'+k+'">'+lab +
+             (on ? '<b>'+(S.dir==='asc'?'\u25B2':'\u25BC')+'</b>' : '') + '</span>';
+    };
+
+    h += '<div class="slist" style="overflow:visible"><div class="fcolhead">' +
+      '<div class="pl-h" style="border-bottom:none;padding-bottom:8px">' +
+      '<h3>Stores</h3><span class="tag printhide">tap a store</span></div>' +
+      '<div class="schead"><span></span>' + hc('name','Store') + hc('gm','GM','schide') +
+      hc('rating','Rating') + SUB.map(m=>hc(m.k,m.lab,'schide')).join('') +
+      '<span class="schide">Flags</span><span class="schide">Weakest</span></div></div>';
+
+    rows.forEach(o=>{
+      const b = band(o.rating);
+      const flags = FLAGS.filter(f=>o[f.k]===1).map(f=>'<span class="scflag">'+f.lab+'</span>').join('');
+      const cells = SUB.map(m=>{
+        const v=o[m.k];
+        if(v===null) return '<span class="schide">\u2014</span>';
+        const a = avg ? avg[m.k] : null;
+        // only call out a cell that is clearly off the benchmark, not merely below it
+        const worse = (a!==null && a) && (m.dir>0 ? v < a*0.95 : v > a*1.05);
+        return '<span class="schide'+(worse?' sc-r':'')+'">'+fmt(v,m.dp)+'</span>';
+      }).join('');
+      h += '<div class="scrow st-'+b+'" data-sid="'+o.sid+'">' +
+        '<span class="lbstripe"><i></i></span>' +
+        '<span class="scname"><span>'+o.name+'</span></span>' +
+        '<span class="schide scgm">'+(o.gm||'\u2014')+'</span>' +
+        '<span class="scrate sc-'+b+'">'+fmt(o.rating,1)+'</span>' + cells +
+        '<span class="schide scflags">'+(flags||'\u2014')+'</span>' +
+        '<span class="schide scweak">'+(weakest(o,avg)||'\u2014')+'</span></div>';
+    });
+
+    if(avg){
+      h += '<div class="scrow lbtot" style="cursor:default"><span class="lbstripe"></span>' +
+        '<span class="scname"><span>Group average</span></span><span class="schide"></span>' +
+        '<span class="scrate">'+fmt(avg.rating,1)+'</span>' +
+        SUB.map(m=>'<span class="schide">'+fmt(avg[m.k],m.dp)+'</span>').join('') +
+        '<span class="schide"></span><span class="schide"></span></div>';
+    }
+    h += '</div>';
+
+    const R=$('scoreResults'); R.innerHTML=h;
+    R.classList.remove('fade'); void R.offsetWidth; R.classList.add('fade');
+    R.querySelectorAll('.scrow[data-sid]').forEach(el=>el.addEventListener('click',()=>{
+      S.store = el.dataset.sid; render(); window.scrollTo({top:0});
+    }));
+    R.querySelectorAll('.sch').forEach(el=>el.addEventListener('click',ev=>{
+      ev.stopPropagation();
+      const k = el.dataset.k;
+      if(S.col===k) S.dir = S.dir==='asc' ? 'desc' : 'asc';
+      else { S.col=k; S.dir = (k==='name'||k==='gm') ? 'asc' : 'desc'; }
+      render();
+    }));
+  }
+
+  function renderStore(avg, per){
+    const sid = S.store;
+    const o = D.rows.find(r=>r.pt===S.type && r.sk===S.sk && r.sid===sid && !r.avg);
+    const hist = D.rows.filter(r=>r.pt==='mo' && r.sid===sid && !r.avg && r.rating!==null)
+                       .sort((a,b)=>a.sk-b.sk);
+
+    let h = '<div class="fback" id="scBack">\u2190 All stores</div>';
+    h += '<div class="rhead"><div><div class="rtitle">'+nameOfSid(sid)+'</div>' +
+      '<div class="rscope">'+((o&&o.gm)?o.gm:'GM not listed') +
+      (adOfSid(sid)?' \u00b7 '+adOfSid(sid):'')+'</div></div>' +
+      '<div class="rmeta">'+(S.type==='rtd'?'Round to date':'Monthly')+'<br>'+per.per+'</div></div>';
+
+    if(!o){
+      h += '<div class="empty">No scorecard row for this store in '+per.per+'.</div>';
+    } else {
+      const b = band(o.rating);
+      h += '<div class="hero"><div class="lab">Overall Rating</div>' +
+        '<div class="val" style="color:'+bcol(b)+'">'+fmt(o.rating,1)+'</div>' +
+        '<div style="font-size:11.5px;color:var(--mut2);font-family:\'Spline Sans Mono\',monospace">' +
+        'group average '+(avg?fmt(avg.rating,1):'\u2014')+'</div></div>';
+
+      h += '<div class="kpis" style="grid-template-columns:repeat(5,1fr)">' +
+        SUB.map(m=>{
+          const v=o[m.k], a=avg?avg[m.k]:null;
+          const worse = (v!==null && a!==null && a) && (m.dir>0 ? v<a*0.95 : v>a*1.05);
+          return '<div class="kpi"><div class="lab">'+m.lab+'</div><div class="v" style="color:' +
+            (v===null?'var(--mut)':worse?'var(--red)':'var(--ink)')+'">'+fmt(v,m.dp)+'</div>' +
+            '<div style="font-size:10px;color:var(--mut2);font-family:\'Spline Sans Mono\',monospace;margin-top:2px">' +
+            'grp '+fmt(a,m.dp)+'</div></div>';
+        }).join('') + '</div>';
+
+      const on = FLAGS.filter(f=>o[f.k]===1);
+      if(on.length) h += '<div class="slist"><div class="pl-h"><h3>Flags</h3></div>' +
+        '<div style="padding:12px 16px;display:flex;gap:8px;flex-wrap:wrap">' +
+        on.map(f=>'<span class="scflag">'+f.lab+'</span>').join('') + '</div></div>';
+    }
+
+    if(hist.length>1) h += sparkCard(hist);
+
+    const R=$('scoreResults'); R.innerHTML=h;
+    R.classList.remove('fade'); void R.offsetWidth; R.classList.add('fade');
+    $('scBack').addEventListener('click', ()=>{ S.store=null; render(); });
+  }
+
+  /* Monthly rating history, fixed 0-5 axis so stores are comparable. */
+  function sparkCard(hist){
+    const W=560,H=180,PL=30,PR=14,PT=20,PB=28;
+    const xs = i => PL + (hist.length===1 ? 0 : i*(W-PL-PR)/(hist.length-1));
+    const ys = v => PT + (5-v)/5*(H-PT-PB);
+    const pts = hist.map((r,i)=>[xs(i), ys(r.rating)]);
+    const path = pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    const grid = [0,1,2,3,4,5].map(v=>
+      '<line x1="'+PL+'" x2="'+(W-PR)+'" y1="'+ys(v).toFixed(1)+'" y2="'+ys(v).toFixed(1) +
+      '" stroke="var(--line)" stroke-width="1"/><text x="'+(PL-6)+'" y="'+(ys(v)+3).toFixed(1) +
+      '" text-anchor="end" font-size="8.5" fill="var(--mut2)" font-family="\'Spline Sans Mono\',monospace">'+v+'</text>').join('');
+    const dots = pts.map((p,i)=>'<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1) +
+      '" r="3" fill="'+bcol(band(hist[i].rating))+'"/>').join('');
+    const step = hist.length>9 ? 2 : 1;
+    const labs = hist.map((r,i)=> (i%step) ? '' :
+      '<text x="'+xs(i).toFixed(1)+'" y="'+(H-9)+'" text-anchor="middle" font-size="8" fill="var(--mut2)" ' +
+      'font-family="\'Spline Sans Mono\',monospace">'+String(r.per||'').replace(/ 20\d\d$/,'')+'</text>').join('');
+    return '<div class="slist"><div class="pl-h"><h3>Rating by month</h3>' +
+      '<span class="tag">'+hist.length+' months</span></div>' +
+      '<div class="chart" style="padding:6px 10px 4px"><svg viewBox="0 0 '+W+' '+H+'" ' +
+      'preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto">' + grid +
+      '<path d="'+path+'" fill="none" stroke="var(--gold)" stroke-width="1.6" ' +
+      'stroke-linejoin="round" stroke-linecap="round"/>' + dots + labs + '</svg></div></div>';
+  }
+
+  $('scScope').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...$('scScope').children].forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); S.scope=b.dataset.s; S.store=null; render();
+  });
+  $('scType').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...$('scType').children].forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); S.type=b.dataset.t;
+    const first = D.periods.find(p=>p.pt===S.type); if(first) S.sk=first.sk;
+    S.store=null; render();
+  });
+  $('scPeriods').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    S.sk = +b.dataset.sk; render();
+  });
+  $('scSort').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...$('scSort').children].forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); S.sort=b.dataset.s; S.col=null; render();
+  });
+  $('scStoreSel').addEventListener('change', e=>{ S.selStore=e.target.value; S.store=null; render(); });
+
+  return { ensure: ensure };
+})();
+
 </script>
 </body>
 </html>

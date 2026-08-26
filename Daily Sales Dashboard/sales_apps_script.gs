@@ -30,10 +30,100 @@ function doGet(e) {
   var p = (e && e.parameter) || {};
   try {
     if (p.diag) return json(diagnose());
+    if (p.data === 'scorecard') return json(buildScorecard());
     return json(buildPayload());
   } catch (err) {
     return json({ ok: false, error: String(err && err.message || err) });
   }
+}
+
+/* ── Brand scorecard ───────────────────────────────────────────────────────
+   One row per store per period, in two flavours: monthly and round-to-date.
+   The tab also carries a "Selected Group Average" pseudo-store, kept and
+   flagged rather than dropped — it is the brand's own benchmark, so it beats
+   inventing thresholds of our own.
+   Direction of travel, confirmed against Overall Rating across 500 rows:
+     rating, cert, rev      higher is better
+     acr, sos, mi           lower is better
+     rv, msd, ltec  (Y/N)   Y is worse                                       */
+var SCORE_NAME = 'Scorecard';
+var SCORE_REQUIRED = ['Restaurant', 'Overall Rating'];
+
+function buildScorecard() {
+  var ss = openBook();
+  var sheet = ss.getSheetByName(SCORE_NAME);
+  if (!sheet || !hasCols(sheet, SCORE_REQUIRED)) {
+    sheet = null;
+    var all = ss.getSheets();
+    for (var i = 0; i < all.length; i++) {
+      if (hasCols(all[i], SCORE_REQUIRED)) { sheet = all[i]; break; }
+    }
+  }
+  if (!sheet) throw new Error('No scorecard sheet found. Tabs: ' +
+    ss.getSheets().map(function (s) { return s.getName(); }).join(', '));
+
+  var v = sheet.getDataRange().getValues();
+  var H = v[0].map(function (h) { return String(h).trim(); });
+  var col = function (n) { return H.indexOf(n); };
+
+  var iSK = col('Sort Key'), iPer = col('Period'), iPT = col('Period Type'),
+      iRnd = col('Round'), iEnd = col('Period End'), iR = col('Restaurant'),
+      iGM = col('GM Name'), iRat = col('Overall Rating'),
+      iACR = col('Guest Satisfaction (ACR)'), iSOS = col('Window Time (SOS)'),
+      iMI = col('Missing & Incorrect (M&I)'), iCert = col('Station Certification'),
+      iREV = col('REV'), iRV = col('Roster Variance'),
+      iMSD = col('Missing Speed Data'), iLT = col('LTEC Failure');
+  if (iR < 0 || iRat < 0) throw new Error('Scorecard columns not found on "' + sheet.getName() + '"');
+
+  var n  = function (x) { var t = String(x == null ? '' : x).replace(/[^0-9.\-]/g, ''); return t === '' ? null : Number(t); };
+  var yn = function (x) { var t = String(x == null ? '' : x).trim().toUpperCase(); return t === 'Y' ? 1 : t === 'N' ? 0 : null; };
+
+  var rows = [];
+  for (var r = 1; r < v.length; r++) {
+    var who = String(v[r][iR] == null ? '' : v[r][iR]).trim();
+    if (!who) continue;
+    var isAvg = /average/i.test(who);
+    var sid = isAvg ? 'avg' : who.replace(/\D/g, '');
+    if (!sid) continue;
+    var pt = String(v[r][iPT] == null ? '' : v[r][iPT]).trim();
+    rows.push({
+      sk:   n(v[r][iSK]),
+      per:  String(v[r][iPer] == null ? '' : v[r][iPer]).trim(),
+      pt:   /round/i.test(pt) ? 'rtd' : 'mo',
+      rnd:  iRnd  >= 0 ? String(v[r][iRnd] || '').trim() : '',
+      end:  iEnd  >= 0 ? String(v[r][iEnd] || '').trim() : '',
+      sid:  sid,
+      avg:  isAvg ? 1 : 0,
+      gm:   iGM   >= 0 ? String(v[r][iGM] || '').trim() : '',
+      rating: n(v[r][iRat]),
+      acr:  iACR  >= 0 ? n(v[r][iACR])  : null,
+      sos:  iSOS  >= 0 ? n(v[r][iSOS])  : null,
+      mi:   iMI   >= 0 ? n(v[r][iMI])   : null,
+      cert: iCert >= 0 ? n(v[r][iCert]) : null,
+      rev:  iREV  >= 0 ? n(v[r][iREV])  : null,
+      rv:   iRV   >= 0 ? yn(v[r][iRV])  : null,
+      msd:  iMSD  >= 0 ? yn(v[r][iMSD]) : null,
+      ltec: iLT   >= 0 ? yn(v[r][iLT])  : null
+    });
+  }
+  if (!rows.length) throw new Error('Scorecard tab "' + sheet.getName() + '" produced 0 rows');
+
+  var sks = rows.map(function (o) { return o.sk; }).filter(function (x) { return x; }).sort();
+  return {
+    ok: true, rows: rows,
+    meta: {
+      tab: sheet.getName(), rows: rows.length,
+      first: sks[0], last: sks[sks.length - 1],
+      generated: new Date().toISOString()
+    }
+  };
+}
+
+function hasCols(sheet, need) {
+  if (!sheet || sheet.getLastRow() < 2 || sheet.getLastColumn() < 1) return false;
+  var hdrs = headersOf(sheet);
+  for (var i = 0; i < need.length; i++) if (hdrs.indexOf(need[i]) === -1) return false;
+  return true;
 }
 
 /** Locate the data sheet by name, then by header signature. Never by position. */
