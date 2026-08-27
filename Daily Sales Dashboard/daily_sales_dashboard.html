@@ -3063,8 +3063,11 @@ const SCORE = (() => {
     // The straight mean of what is on screen. It differs from the brand's
     // "Portfolio average" because theirs is volume-weighted and excludes
     // unmeasured stores — showing both makes that gap visible.
+    // One footer row, never two: the brand's weighted figure when the whole
+    // portfolio is on screen, our own mean when a group is filtered. A single
+    // store needs neither — the row above it already is the answer.
     const skipped = rows.length - live.length;
-    if(live.length){
+    if(!isGroup() && live.length > 1){
       const meanOf = k => {
         const got = live.filter(o=>o[k]!==null);
         return got.length ? got.reduce((t,o)=>t+o[k],0)/got.length : null;
@@ -3077,7 +3080,7 @@ const SCORE = (() => {
         '<span class="schide"></span><span class="schide"></span></div>';
     }
 
-    if(avg){
+    if(isGroup() && avg){
       h += '<div class="scrow lbtot" style="cursor:default"><span class="lbstripe"></span>' +
         '<span class="scname"><span>Portfolio average</span></span>' +
         '<span class="schide scgm">'+portfolioN+' stores \u00b7 weighted</span>' +
