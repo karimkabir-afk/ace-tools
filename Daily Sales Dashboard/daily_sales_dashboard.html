@@ -2850,6 +2850,13 @@ const SCORE = (() => {
 
   /* Anything we average ourselves is an unweighted mean of store values, which
      is not the same statistic as the brand's weighted group figure. Say so. */
+  /* A store that was not measured at all comes through as a whole row of
+     zeros — Etown during its 2025 renovation closure, for instance. Those are
+     absences, not scores, and averaging them in drags the number down (it put
+     Aug 2025 REV at 75.2 against the brand's 84). Legitimate zeros survive,
+     because a store with no complaints still has real numbers elsewhere. */
+  const measured = o => METRICS.some(m => o[m.k] !== null && o[m.k] !== 0);
+
   const isTY     = sc => typeof sc==='string' && sc.slice(0,3)==='ty:';
   const tyName   = sc => sc.slice(3);
   const tyLabel  = sc => tyName(sc).replace(' Stores','').replace(' Acquisition','');
@@ -2921,7 +2928,7 @@ const SCORE = (() => {
     });
     if(!worst && o.rv===1) return 'roster variance';
     // lower-is-better metrics are worse when ABOVE the benchmark, so say so
-    return worst ? worst.lab + (worst.dir>0 ? ' below group' : ' above group') : '';
+    return worst ? worst.lab + (worst.dir>0 ? ' below portfolio' : ' above portfolio') : '';
   }
 
   function scoped(){
@@ -2941,6 +2948,9 @@ const SCORE = (() => {
 
     const per = D.periods.find(p=>p.pt===S.type && p.sk===S.sk) || {per:''};
     const avg = D.rows.find(r=>r.pt===S.type && r.sk===S.sk && r.avg) || null;
+    // the benchmark row is always the whole portfolio, even when the table is
+    // filtered to one AD, so the label has to say how many stores it covers
+    const portfolioN = D.rows.filter(r=>r.pt===S.type && r.sk===S.sk && !r.avg).length;
 
     if(S.store){ renderStore(avg, per); return; }
     let rows = scoped();
@@ -2965,7 +2975,8 @@ const SCORE = (() => {
       });
     }
 
-    const rated = rows.filter(o=>o.rating!==null);
+    const live  = rows.filter(measured);          // averages ignore unmeasured stores
+    const rated = live.filter(o=>o.rating!==null);
     const mean  = rated.length ? rated.reduce((s,o)=>s+o.rating,0)/rated.length : null;
     const under = rated.filter(o=>o.rating<3).length;
     const ltec  = rows.filter(o=>o.ltec===1).length;
@@ -2982,12 +2993,12 @@ const SCORE = (() => {
     // One tile per metric. At group scope the brand's own weighted figure is
     // the answer; for a subset we must average the stores ourselves, and that
     // is captioned as a mean so it is never mistaken for an official number.
-    const cap = isGroup() ? 'brand figure' : 'mean of '+rows.length;
+    const cap = isGroup() ? 'brand figure' : 'mean of '+live.length;
     h += '<div class="kpis kpis-6">' + METRICS.map(m=>{
       let v;
       if(isGroup()) v = avg ? avg[m.k] : null;
       else {
-        const got = rows.filter(o=>o[m.k]!==null);
+        const got = live.filter(o=>o[m.k]!==null);
         v = got.length ? got.reduce((t,o)=>t+o[m.k],0)/got.length : null;
       }
       // Rating carries its own bands; the rest are only flagged when a
@@ -2999,7 +3010,7 @@ const SCORE = (() => {
         if(m.dir>0 ? v < a*0.95 : v > a*1.05) colour = 'var(--red)';
       }
       const grpNote = (!isGroup() && avg && avg[m.k]!==null)
-        ? 'grp '+fmt(avg[m.k],m.dp,m.trim) : cap;
+        ? 'ptf '+fmt(avg[m.k],m.dp,m.trim) : cap;
       return '<div class="kpi"><div class="lab">'+m.lab+'</div>' +
         '<div class="v" style="color:'+colour+'">'+fmt(v,m.dp,m.trim)+'</div>' +
         '<div class="kcap">'+grpNote+'</div></div>';
@@ -3010,7 +3021,7 @@ const SCORE = (() => {
         rated.length+' under 3.0</span>' +
       '<span><b style="color:'+(ltec?'var(--red)':'var(--grn)')+'">'+ltec+'</b> LTEC '+
         (ltec===1?'failure':'failures')+'</span>' +
-      (isGroup() ? '' : '<span>group rating <b>'+(avg?fmt(avg.rating,1):'\u2014')+'</b></span>') +
+      (isGroup() ? '' : '<span>portfolio rating <b>'+(avg?fmt(avg.rating,1):'\u2014')+'</b></span>') +
       '</div>';
 
     h += trendCard(seriesFor(rows.map(o=>o.sid), isGroup()),
@@ -3050,16 +3061,17 @@ const SCORE = (() => {
     });
 
     // The straight mean of what is on screen. It differs from the brand's
-    // "Group average" because theirs is volume-weighted — showing both makes
-    // that gap visible instead of hiding it behind one number.
-    if(rows.length){
+    // "Portfolio average" because theirs is volume-weighted and excludes
+    // unmeasured stores — showing both makes that gap visible.
+    const skipped = rows.length - live.length;
+    if(live.length){
       const meanOf = k => {
-        const got = rows.filter(o=>o[k]!==null);
+        const got = live.filter(o=>o[k]!==null);
         return got.length ? got.reduce((t,o)=>t+o[k],0)/got.length : null;
       };
       h += '<div class="scrow lbtot scavg" style="cursor:default"><span class="lbstripe"></span>' +
-        '<span class="scname"><span>Average of '+rows.length+'</span></span>' +
-        '<span class="schide scgm">unweighted</span>' +
+        '<span class="scname"><span>Average of '+live.length+'</span></span>' +
+        '<span class="schide scgm">simple mean'+(skipped?' \u00b7 '+skipped+' not measured':'')+'</span>' +
         '<span class="scrate">'+fmt(meanOf('rating'),1)+'</span>' +
         SUB.map(m=>'<span class="schide">'+fmt(meanOf(m.k),m.dp,m.trim)+'</span>').join('') +
         '<span class="schide"></span><span class="schide"></span></div>';
@@ -3067,7 +3079,8 @@ const SCORE = (() => {
 
     if(avg){
       h += '<div class="scrow lbtot" style="cursor:default"><span class="lbstripe"></span>' +
-        '<span class="scname"><span>Group average</span></span><span class="schide scgm">brand, weighted</span>' +
+        '<span class="scname"><span>Portfolio average</span></span>' +
+        '<span class="schide scgm">'+portfolioN+' stores \u00b7 weighted</span>' +
         '<span class="scrate">'+fmt(avg.rating,1)+'</span>' +
         SUB.map(m=>'<span class="schide">'+fmt(avg[m.k],m.dp,m.trim)+'</span>').join('') +
         '<span class="schide"></span><span class="schide"></span></div>';
@@ -3106,7 +3119,7 @@ const SCORE = (() => {
       h += '<div class="hero"><div class="lab">Overall Rating</div>' +
         '<div class="val" style="color:'+bcol(b)+'">'+fmt(o.rating,1)+'</div>' +
         '<div style="font-size:11.5px;color:var(--mut2);font-family:\'Spline Sans Mono\',monospace">' +
-        'group average '+(avg?fmt(avg.rating,1):'\u2014')+'</div></div>';
+        'portfolio average '+(avg?fmt(avg.rating,1):'\u2014')+'</div></div>';
 
       h += '<div class="kpis" style="grid-template-columns:repeat(5,1fr)">' +
         SUB.map(m=>{
@@ -3115,7 +3128,7 @@ const SCORE = (() => {
           return '<div class="kpi"><div class="lab">'+m.lab+'</div><div class="v" style="color:' +
             (v===null?'var(--mut)':worse?'var(--red)':'var(--ink)')+'">'+fmt(v,m.dp,m.trim)+'</div>' +
             '<div style="font-size:10px;color:var(--mut2);font-family:\'Spline Sans Mono\',monospace;margin-top:2px">' +
-            'grp '+fmt(a,m.dp,m.trim)+'</div></div>';
+            'ptf '+fmt(a,m.dp,m.trim)+'</div></div>';
         }).join('') + '</div>';
 
       const on = FLAGS.filter(f=>o[f.k]===1);
@@ -3135,15 +3148,17 @@ const SCORE = (() => {
   /* ── Trend ────────────────────────────────────────────────────────────
      Follows the Period Type toggle, so the same control drives the table and
      the chart. The gold line is whatever is in scope; the dashed line is the
-     brand's own group average for the same periods, which keeps a portfolio
-     dip readable as "everyone" or "us". */
+     portfolio average for the same periods (the brand's own weighted figure
+     over the same stores), so a dip reads as "this selection" or "all of us". */
   function seriesFor(sids, official){
     const want = sids ? new Set(sids) : null;
     const per = D.periods.filter(p=>p.pt===S.type).slice().sort((a,b)=>a.sk-b.sk);
     const k = S.metric;
     return per.map(p=>{
       const at = D.rows.filter(r=>r.pt===S.type && r.sk===p.sk);
-      const mine = at.filter(r=>!r.avg && (!want || want.has(r.sid)) && r[k]!==null);
+      const mine = at.filter(r=>!r.avg && (!want || want.has(r.sid)) && r[k]!==null)
+                     .map(r=>Object.assign({},r))
+                     .filter(measured);
       const g = at.find(r=>r.avg);
       const grp = (g && g[k]!==null) ? g[k] : null;
       return {
@@ -3219,10 +3234,10 @@ const SCORE = (() => {
       '<div class="scrub-hint" style="opacity:.8;padding:0 16px 12px">'+
       '<span style="display:inline-flex;align-items:center;gap:5px">'+
       '<span style="width:14px;height:0;border-top:2px solid var(--gold)"></span>'+
-      (twin ? 'Group average (brand)' : S.store ? nameOfSid(S.store) : selLabel())+'</span>'+
+      (twin ? 'Portfolio average (weighted)' : S.store ? nameOfSid(S.store) : selLabel())+'</span>'+
       (twin ? '' :
         '<span style="display:inline-flex;align-items:center;gap:5px;margin-left:14px">'+
-        '<span style="width:14px;height:0;border-top:2px dashed var(--mut2)"></span>Group average</span>')+
+        '<span style="width:14px;height:0;border-top:2px dashed var(--mut2)"></span>Portfolio average</span>')+
       '</div></div>';
   }
 
