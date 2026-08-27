@@ -515,6 +515,10 @@ svg{width:100%;display:block;overflow:visible}
 .kpis-6{grid-template-columns:repeat(6,1fr)}
 @media(max-width:1100px){.kpis-6{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:560px){.kpis-6{grid-template-columns:repeat(2,1fr)}}
+.scavg>span{color:var(--mut)!important}
+.scavg .scname{color:var(--mut)!important}
+.scavg .scgm{font-size:10px;color:var(--mut2)!important}
+.scrow.lbtot+.scrow.lbtot{border-top:1px solid var(--line)}
 .scstrip{display:flex;gap:18px;flex-wrap:wrap;margin:-4px 2px 14px;
   font-family:'Spline Sans Mono',monospace;font-size:11.5px;color:var(--mut2)}
 .scstrip b{font-weight:600}
@@ -671,6 +675,10 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
   <span class="flabel">Scope</span>
   <div class="seg" id="scScope">
     <button class="on" data-s="all">Portfolio</button>
+    <button data-s="ty:Legacy Stores">Legacy</button>
+    <button data-s="ty:Kevin Acquisition">Kevin</button>
+    <button data-s="ty:Development">Dev</button>
+    <button data-s="ty:Carrols Acquisition">Carrols</button>
     <button data-s="store">Single store</button>
   </div>
   <div id="scStoreWrap" style="display:none;margin-top:10px">
@@ -837,27 +845,31 @@ function adKey(s){
 }
 /* Scorecard rows identify stores by id only, so keep an id-keyed view too. */
 const STORE_META = {
-  '5671':{n:'Bardstown',      ad:'Haley Bush'},
-  '5745':{n:'Dixie',          ad:'Haley Bush'},
-  '5890':{n:'Etown',          ad:'Haley Bush'},
-  '12683':{n:'Fern Creek',    ad:'Haley Bush'},
-  '14841':{n:'Broadway',      ad:'Haley Bush'},
-  '14795':{n:'Interchange Dr',ad:'Haley Bush'},
-  '11848':{n:'Middletown',    ad:'Brooke Wheat'},
-  '12107':{n:'Paris Pike',    ad:'Brooke Wheat'},
-  '12189':{n:'Veterans',      ad:'Brooke Wheat'},
-  '12461':{n:'State Street',  ad:'Brooke Wheat'},
-  '15309':{n:'Fischer Park',  ad:'Brooke Wheat'},
-  '15743':{n:'Taylorsville',  ad:'Brooke Wheat'},
-  '11413':{n:'1st Avenue',    ad:'Marcela Villanueva'},
-  '13424':{n:'Newburg',       ad:'Marcela Villanueva'},
-  '13517':{n:'Menards',       ad:'Marcela Villanueva'},
-  '12323':{n:'Owensboro',     ad:'Marcela Villanueva'},
-  '12932':{n:'Louisville Road',ad:'Dawn Tetzlaff'},
-  '13205':{n:'Glasgow',       ad:'Dawn Tetzlaff'},
-  '13516':{n:'Nashville Road',ad:'Dawn Tetzlaff'}
+  '5671':{n:'Bardstown',      ad:'Haley Bush', t:'Legacy Stores'},
+  '5745':{n:'Dixie',          ad:'Haley Bush', t:'Legacy Stores'},
+  '5890':{n:'Etown',          ad:'Haley Bush', t:'Legacy Stores'},
+  '12683':{n:'Fern Creek',    ad:'Haley Bush', t:'Legacy Stores'},
+  '14841':{n:'Broadway',      ad:'Haley Bush', t:'Development'},
+  '14795':{n:'Interchange Dr',ad:'Haley Bush', t:'Development'},
+  '11848':{n:'Middletown',    ad:'Brooke Wheat', t:'Legacy Stores'},
+  '12107':{n:'Paris Pike',    ad:'Brooke Wheat', t:'Legacy Stores'},
+  '12189':{n:'Veterans',      ad:'Brooke Wheat', t:'Legacy Stores'},
+  '12461':{n:'State Street',  ad:'Brooke Wheat', t:'Legacy Stores'},
+  '15309':{n:'Fischer Park',  ad:'Brooke Wheat', t:'Development'},
+  '15743':{n:'Taylorsville',  ad:'Brooke Wheat', t:'Development'},
+  '11413':{n:'1st Avenue',    ad:'Marcela Villanueva', t:'Kevin Acquisition'},
+  '13424':{n:'Newburg',       ad:'Marcela Villanueva', t:'Kevin Acquisition'},
+  '13517':{n:'Menards',       ad:'Marcela Villanueva', t:'Kevin Acquisition'},
+  '12323':{n:'Owensboro',     ad:'Marcela Villanueva', t:'Legacy Stores'},
+  '12932':{n:'Louisville Road',ad:'Dawn Tetzlaff', t:'Kevin Acquisition'},
+  '13205':{n:'Glasgow',       ad:'Dawn Tetzlaff', t:'Kevin Acquisition'},
+  '13516':{n:'Nashville Road',ad:'Dawn Tetzlaff', t:'Kevin Acquisition'}
 };
+  // Closed in 2025/26 but still present in earlier scorecard periods.
+  STORE_META['12924'] = {n:'Scottsburg', ad:null, t:'Carrols Acquisition'};
+  STORE_META['12948'] = {n:'Seymour',    ad:null, t:'Carrols Acquisition'};
 const nameOfSid = sid => (STORE_META[String(sid)]||{}).n || String(sid);
+const typeOfSid = sid => (STORE_META[String(sid)]||{}).t  || null;
 const adOfSid   = sid => (STORE_META[String(sid)]||{}).ad || null;
 
 const AD_BY_STORE = (()=>{ const m={};
@@ -2838,9 +2850,13 @@ const SCORE = (() => {
 
   /* Anything we average ourselves is an unweighted mean of store values, which
      is not the same statistic as the brand's weighted group figure. Say so. */
+  const isTY     = sc => typeof sc==='string' && sc.slice(0,3)==='ty:';
+  const tyName   = sc => sc.slice(3);
+  const tyLabel  = sc => tyName(sc).replace(' Stores','').replace(' Acquisition','');
   const isGroup  = () => S.scope==='all';
   const selLabel = () => S.scope==='store' ? nameOfSid(S.selStore)
-                   : isAD(S.scope) ? adName(S.scope)+' (mean)' : 'Selection';
+                   : isAD(S.scope) ? adName(S.scope)+' (mean)'
+                   : isTY(S.scope) ? tyLabel(S.scope)+' (mean)' : 'Selection';
 
   function ensure(){ if(!D.loaded && !D.loading) load(); else render(); }
 
@@ -2910,9 +2926,11 @@ const SCORE = (() => {
 
   function scoped(){
     let rows = D.rows.filter(r=>r.pt===S.type && r.sk===S.sk && !r.avg)
-                     .map(r=>Object.assign({}, r, {name:nameOfSid(r.sid), ad:adOfSid(r.sid)}));
+                     .map(r=>Object.assign({}, r, {name:nameOfSid(r.sid),
+                                                   ad:adOfSid(r.sid), ty:typeOfSid(r.sid)}));
     if(S.scope==='store') rows = rows.filter(o=>o.sid===S.selStore);
     else if(isAD(S.scope)) rows = rows.filter(o=>o.ad===adName(S.scope));
+    else if(isTY(S.scope)) rows = rows.filter(o=>o.ty===tyName(S.scope));
     return rows;
   }
 
@@ -2954,7 +2972,8 @@ const SCORE = (() => {
 
     const scopeLbl = S.scope==='all' ? 'All '+rows.length+' stores'
                    : S.scope==='store' ? nameOfSid(S.selStore)
-                   : isAD(S.scope) ? adName(S.scope)+' \u2014 '+rows.length+' stores' : '';
+                   : isAD(S.scope) ? adName(S.scope)+' \u2014 '+rows.length+' stores'
+                   : isTY(S.scope) ? tyLabel(S.scope)+' \u2014 '+rows.length+' stores' : '';
 
     let h = '<div class="rhead"><div><div class="rtitle">Scorecard</div>' +
       '<div class="rscope">'+scopeLbl+'</div></div>' +
@@ -3030,9 +3049,25 @@ const SCORE = (() => {
         '<span class="schide scweak">'+(weakest(o,avg)||'\u2014')+'</span></div>';
     });
 
+    // The straight mean of what is on screen. It differs from the brand's
+    // "Group average" because theirs is volume-weighted — showing both makes
+    // that gap visible instead of hiding it behind one number.
+    if(rows.length){
+      const meanOf = k => {
+        const got = rows.filter(o=>o[k]!==null);
+        return got.length ? got.reduce((t,o)=>t+o[k],0)/got.length : null;
+      };
+      h += '<div class="scrow lbtot scavg" style="cursor:default"><span class="lbstripe"></span>' +
+        '<span class="scname"><span>Average of '+rows.length+'</span></span>' +
+        '<span class="schide scgm">unweighted</span>' +
+        '<span class="scrate">'+fmt(meanOf('rating'),1)+'</span>' +
+        SUB.map(m=>'<span class="schide">'+fmt(meanOf(m.k),m.dp,m.trim)+'</span>').join('') +
+        '<span class="schide"></span><span class="schide"></span></div>';
+    }
+
     if(avg){
       h += '<div class="scrow lbtot" style="cursor:default"><span class="lbstripe"></span>' +
-        '<span class="scname"><span>Group average</span></span><span class="schide"></span>' +
+        '<span class="scname"><span>Group average</span></span><span class="schide scgm">brand, weighted</span>' +
         '<span class="scrate">'+fmt(avg.rating,1)+'</span>' +
         SUB.map(m=>'<span class="schide">'+fmt(avg[m.k],m.dp,m.trim)+'</span>').join('') +
         '<span class="schide"></span><span class="schide"></span></div>';
