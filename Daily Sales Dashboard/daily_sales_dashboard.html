@@ -3189,6 +3189,8 @@ const SCORE = (() => {
     }
     const xs = i => PL + (series.length===1 ? 0 : i*(W-PL-PR)/(series.length-1));
     const ys = v => PT + (hi-v)/(hi-lo||1)*(H-PT-PB);
+    // the period the rest of the page is showing
+    const sel = series.findIndex(d=>d.sk===S.sk);
 
     const ticks = S.metric==='rating' ? [0,1,2,3,4,5]
       : [0,.25,.5,.75,1].map(f=>lo+(hi-lo)*f);
@@ -3206,33 +3208,47 @@ const SCORE = (() => {
         'stroke-linecap="round"'+(dash?' stroke-dasharray="4 3"':'')+'/>';
     };
 
+    const guide = sel < 0 ? '' :
+      '<line x1="'+xs(sel).toFixed(1)+'" x2="'+xs(sel).toFixed(1)+'" y1="'+PT+'" y2="'+(H-PB)+'" '+
+      'stroke="var(--line2)" stroke-width="1" stroke-dasharray="3 3"/>';
+
     const dots = series.map((d,i)=>{
       if(d.val===null) return '';
       const c = S.metric==='rating' ? bcol(band(d.val)) : 'var(--gold)';
-      return '<circle cx="'+xs(i).toFixed(1)+'" cy="'+ys(d.val).toFixed(1)+'" r="3" fill="'+c+'"/>';
+      const x = xs(i).toFixed(1), y = ys(d.val).toFixed(1);
+      if(i===sel) return '<circle cx="'+x+'" cy="'+y+'" r="6.5" fill="none" stroke="'+c+'" '+
+                         'stroke-width="1.2" opacity=".45"/>'+
+                         '<circle cx="'+x+'" cy="'+y+'" r="4.2" fill="'+c+'"/>';
+      return '<circle cx="'+x+'" cy="'+y+'" r="3" fill="'+c+'" opacity=".45"/>';
     }).join('');
 
     // label every point when there is room, otherwise thin them out
     const step = series.length>10 ? 2 : 1;
     const labs = series.map((d,i)=>{
-      if(d.val===null || (i%step && i!==series.length-1)) return '';
-      return '<text x="'+xs(i).toFixed(1)+'" y="'+(ys(d.val)-8).toFixed(1)+'" text-anchor="middle" '+
-        'font-size="9" fill="var(--mut)" font-family="&quot;Spline Sans Mono&quot;,monospace">'+
-        fmt(d.val,m.dp,m.trim)+'</text>';
+      if(d.val===null) return '';
+      const on = i===sel;
+      if(!on && (i%step && i!==series.length-1)) return '';
+      return '<text x="'+xs(i).toFixed(1)+'" y="'+(ys(d.val)-(on?11:8)).toFixed(1)+'" '+
+        'text-anchor="middle" font-size="'+(on?10.5:9)+'" '+
+        'fill="'+(on?'var(--ink)':'var(--mut)')+'"'+(on?' font-weight="600"':'')+' '+
+        'font-family="&quot;Spline Sans Mono&quot;,monospace">'+fmt(d.val,m.dp,m.trim)+'</text>';
     }).join('');
 
     const xlab = series.map((d,i)=>{
-      if(i%step && i!==series.length-1) return '';
+      const on = i===sel;
+      if(!on && (i%step && i!==series.length-1)) return '';
       const t = perLabel(d).replace(/ 20(\d\d)$/,' $1');
       return '<text x="'+xs(i).toFixed(1)+'" y="'+(H-9)+'" text-anchor="middle" font-size="8" '+
-        'fill="var(--mut2)" font-family="&quot;Spline Sans Mono&quot;,monospace">'+t+'</text>';
+        'fill="'+(on?'var(--gold2)':'var(--mut2)')+'"'+(on?' font-weight="600"':'')+' '+
+        'font-family="&quot;Spline Sans Mono&quot;,monospace">'+t+'</text>';
     }).join('');
 
     return '<div class="slist"><div class="pl-h"><h3>'+heading+'</h3>'+
-      '<span class="tag">'+(S.type==='rtd'?'Round to date':'Monthly')+' \u00b7 '+series.length+'</span></div>'+
+      '<span class="tag">'+(S.type==='rtd'?'Round to date':'Monthly')+
+      (sel>=0 ? ' \u00b7 '+perLabel(series[sel]) : ' \u00b7 '+series.length)+'</span></div>'+
       '<div class="chart" style="padding:6px 10px 2px"><svg viewBox="0 0 '+W+' '+H+'" '+
       'preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto">'+
-      grid + (twin ? '' : line('grp','var(--mut2)',true)) + line('val','var(--gold)',false) + dots + labs + xlab +
+      grid + guide + (twin ? '' : line('grp','var(--mut2)',true)) + line('val','var(--gold)',false) + dots + labs + xlab +
       '</svg></div>'+
       '<div class="scrub-hint" style="opacity:.8;padding:0 16px 12px">'+
       '<span style="display:inline-flex;align-items:center;gap:5px">'+
