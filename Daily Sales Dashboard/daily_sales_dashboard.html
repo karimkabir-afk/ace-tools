@@ -2989,6 +2989,8 @@ const SCORE = (() => {
     h += '<div class="scstrip">' +
       '<span><b style="color:'+(under?'var(--red)':'var(--grn)')+'">'+under+'</b> of '+
         rated.length+' under 3.0</span>' +
+      '<span><b style="color:'+(ltec?'var(--red)':'var(--grn)')+'">'+ltec+'</b> LTEC '+
+        (ltec===1?'failure':'failures')+'</span>' +
       (isGroup() ? '' : '<span>group rating <b>'+(avg?fmt(avg.rating,1):'\u2014')+'</b></span>') +
       '</div>';
 
