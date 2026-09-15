@@ -2497,7 +2497,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
       const eff = tgtd/actd;
       const effLabel = pct(eff);
       if(eff>1.05) return {key:'suspect', effLabel, effCls:'r', status:'Usage &lt; Target', statusCls:'r2', cls:'a', eff,
-        advice:'Usage far below sales — check whether purchases were entered.'};
+        advice:'Usage far below sales — check beginning counts and ending counts'};
       if(eff>=0.90) return {key:'good', effLabel, effCls:'g', status:'On Target', statusCls:'g', cls:'g', eff,
         advice:'Usage matches sales. Nothing to fix.'};
       if(eff>=0.80) return {key:'overuse', effLabel, effCls:'r', status:'Usage &gt; Target', statusCls:'r', cls:'a', eff,
