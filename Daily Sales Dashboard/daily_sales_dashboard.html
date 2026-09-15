@@ -2503,7 +2503,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
       if(eff>=0.80) return {key:'overuse', effLabel, effCls:'r', status:'Usage &gt; Target', statusCls:'r', cls:'a', eff,
         advice:'Used more than sales required — possible reasons 1. count error, 2. waste issue, 3. theft issue'};
       return {key:'serious', effLabel, effCls:'r', status:'Usage &gt; Target', statusCls:'r', cls:'r', eff,
-        advice:'Serious over-usage — check waste and possible theft.'};
+        advice:'Serious over-usage — possible reasons 1. count error, 2. waste issue, 3. theft issue'};
     }
     if(actd>0 && tgtd===0) return {key:'notarget', effLabel:'—', effCls:'m', status:'No Target', statusCls:'a', cls:'a',
       advice:'Usage recorded but no sales target — check the item mapping.'};
