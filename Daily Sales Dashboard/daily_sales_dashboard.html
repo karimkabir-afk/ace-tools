@@ -2883,8 +2883,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
           <span class="finame">${titleCase(r.item)}</span>
           <span class="finum">${r.act===null?'—':(+r.act).toLocaleString()}</span>
           <span class="finum">${r.tgt===null?'—':(+r.tgt).toLocaleString()}</span>
-          <span class="finum" style="color:${countVar(r)>0?'var(--red)':'var(--mut)'}">${
-            fmtCountVar(countVar(r))}</span>
+          <span class="finum">${fmtCountVar(countVar(r))}</span>
           <span class="finum fieff fe-${flag.effCls}">${flag.effLabel}</span>
           <span class="fistat"><span class="fbadge fb-${flag.statusCls}">${flag.status}</span></span>
         </div>
