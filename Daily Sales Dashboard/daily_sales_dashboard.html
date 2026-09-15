@@ -238,18 +238,20 @@ svg{width:100%;display:block;overflow:visible}
 .firow{border-bottom:1px solid rgba(38,52,43,.5)}
 .firow:last-child{border-bottom:none}
 .firow .fihead,.figrid-h{display:grid;
-  grid-template-columns:minmax(0,1fr) 52px 52px 58px 96px;gap:9px;padding:12px 16px;align-items:center}
+  grid-template-columns:22px minmax(0,1fr) 52px 52px 58px 96px;gap:9px;padding:12px 16px;align-items:center}
 .firow .fihead{cursor:pointer}
 .figrid-h{padding:0 16px 9px;font-size:9.5px;color:var(--mut2);text-transform:uppercase;
   letter-spacing:.07em;font-family:'Spline Sans Mono',monospace}
 .figrid-h span+span{text-align:right}
 .firow .finame{font-size:13px;font-weight:500}
+.firow.picked{background:var(--rowhov)}
+@media print{.firow .fihead,.figrid-h{grid-template-columns:minmax(0,1fr) 44px 44px 50px 84px}}
 .firow .finum{font-family:'Spline Sans Mono',monospace;font-size:12.5px;text-align:right}
 .fieff{font-weight:600}
 .fe-g{color:var(--grn)}.fe-a{color:var(--gold2)}.fe-r{color:var(--red)}.fe-m{color:var(--mut2)}
 .fistat{text-align:right}
 @media(max-width:520px){
-  .firow .fihead,.figrid-h{grid-template-columns:minmax(0,1fr) 44px 44px 50px 84px;gap:6px}
+  .firow .fihead,.figrid-h{grid-template-columns:22px minmax(0,1fr) 44px 44px 50px 84px;gap:6px}
   .firow .finum{font-size:11.5px}
   .fbadge{font-size:9.5px;padding:3px 6px}
 }
@@ -2368,7 +2370,8 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
   let ALL_STORES = [];      // every store ever seen
   const F = { date:null, store:null, open:new Set(), loaded:false, loading:false, scope:'all',
                sort:'worst', iCol:null, iDir:'desc',
-               selRows:new Set(), selOnly:false };
+               selRows:new Set(), selOnly:false,
+               selItems:new Set(), itemOnly:false };
 
   // Stores in play for the current scope. Food rows carry names only, so the
   // AD match runs through adKey() to absorb the Louisville/Glasgow/Nashville
@@ -2675,10 +2678,19 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     const sd = storeDay(F.store, F.date);
     const stk = streak(F.store, F.date);
 
+    // when items are ticked, the header and tiles describe just those
+    const iv = itemsFor(sd);
+    const picked = F.itemOnly && iv.nSel;
+    const pAct = picked ? iv.shown.reduce((t,x)=>t+(x.r.actd||0),0) : sd.actd;
+    const pTgt = picked ? iv.shown.reduce((t,x)=>t+(x.r.tgtd||0),0) : sd.tgtd;
+    const pVar = pAct - pTgt;
+    const pOnT = picked ? iv.shown.filter(x=>x.flag.key==='good').length : sd.onT;
+    const pTot = picked ? iv.shown.length : sd.totI;
+
     let h = `<div class="fback" id="fBack">← All stores</div>`;
     h += `<div class="rhead">
       <div><div class="rtitle">${F.store}</div>
-      <div class="rscope">${(sd.status==='absent'||sd.status==='nocount')?'No count':sd.onT+' of '+sd.totI+' items on target'}</div></div>
+      <div class="rscope">${(sd.status==='absent'||sd.status==='nocount')?'No count':pOnT+' of '+pTot+' items on target'}</div></div>
       <div class="rmeta">${fmtDFull(F.date)}</div>
     </div>`;
 
@@ -2709,9 +2721,11 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     } else {
       // KPI row
       h += `<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
-        <div class="kpi"><div class="lab">Used</div><div class="v">${dollar(sd.actd)}</div></div>
-        <div class="kpi"><div class="lab">Target</div><div class="v">${dollar(sd.tgtd)}</div></div>
-        <div class="kpi"><div class="lab">Variance</div><div class="v" style="color:${sd.cls==='r'?'var(--red)':sd.cls==='a'?'var(--gold2)':'var(--grn)'}">${signDollar(sd.vard)}</div></div>
+        <div class="kpi"><div class="lab">Used</div><div class="v">${dollar(pAct)}</div>${
+          picked?`<div class="kcap">${iv.shown.length} of ${iv.all.length} items</div>`:''}</div>
+        <div class="kpi"><div class="lab">Target</div><div class="v">${dollar(pTgt)}</div></div>
+        <div class="kpi"><div class="lab">Variance</div><div class="v" style="color:${
+          pVar>0?'var(--red)':Math.abs(pVar)<50?'var(--grn)':'var(--gold2)'}">${signDollar(pVar)}</div></div>
       </div>`;
       h += renderItems(sd);
     }
@@ -2719,12 +2733,39 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     const R=$('foodResults');
     R.innerHTML = h;
     R.classList.remove('fade'); void R.offsetWidth; R.classList.add('fade');
-    $('fBack').addEventListener('click', ()=>{ F.store=null; renderFood(); });
+    $('fBack').addEventListener('click', ()=>{
+      F.store=null; F.selItems.clear(); F.itemOnly=false; renderFood();
+    });
     R.querySelectorAll('.fihead').forEach(el=>{
       el.addEventListener('click', ()=>{
         const row = el.parentElement, k = row.dataset.k;
         if(F.open.has(k)) F.open.delete(k); else F.open.add(k);
         row.classList.toggle('open');
+      });
+    });
+    R.querySelectorAll('input[data-ipick]').forEach(cb=>{
+      cb.addEventListener('click', ev=>ev.stopPropagation());   // not a row expand
+      cb.addEventListener('change', ()=>{
+        const k = cb.dataset.ipick;
+        if(cb.checked) F.selItems.add(k); else F.selItems.delete(k);
+        if(!F.selItems.size) F.itemOnly = false;
+        renderFood();
+      });
+    });
+    const iAll = R.querySelector('#fItemAll');
+    if(iAll) iAll.addEventListener('change', ()=>{
+      itemsFor(storeDay(F.store, F.date)).all.forEach(x=>{
+        if(iAll.checked) F.selItems.add(x.name); else F.selItems.delete(x.name);
+      });
+      if(!F.selItems.size) F.itemOnly = false;
+      renderFood();
+    });
+    R.querySelectorAll('[data-iact]').forEach(b=>{
+      b.addEventListener('click', ev=>{
+        ev.stopPropagation();
+        if(b.dataset.iact==='only') F.itemOnly = !F.itemOnly;
+        else { F.selItems.clear(); F.itemOnly = false; }
+        renderFood();
       });
     });
     R.querySelectorAll('.fih').forEach(el=>{
@@ -2742,7 +2783,16 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
      61% item on $4, and efficiency alone can't tell them apart. */
   const ITEM_RANK = {broken:0, nocount:1, serious:2, overuse:3, suspect:4, notarget:5, good:6};
 
-  function renderItems(sd) {
+  /* Classified, sorted, and narrowed to the ticked items. Shared by the tiles
+     and the table so the two can never disagree. */
+  function itemsFor(sd) {
+    const all = itemRows(sd);
+    const nSel = all.filter(x=>F.selItems.has(x.name)).length;
+    const shown = (F.itemOnly && nSel) ? all.filter(x=>F.selItems.has(x.name)) : all;
+    return {all, shown, nSel};
+  }
+
+  function itemRows(sd) {
     const items = sd.rows.map(r=>({r, flag:classifyItem(r)}))
       .filter(x=>x.flag)
       .map(x=>({
@@ -2754,7 +2804,6 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
         rank:   ITEM_RANK[x.flag.key] ?? 9,
         impact: Math.abs((x.r.actd||0) - (x.r.tgtd||0))
       }));
-    if(!items.length) return '';
 
     if(F.iCol){
       const k = F.iCol, dir = F.iDir;
@@ -2774,6 +2823,13 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
                        : b.impact!==a.impact ? b.impact-a.impact
                        : a.name.localeCompare(b.name));
     }
+    return items;
+  }
+
+  function renderItems(sd) {
+    const {shown, nSel} = itemsFor(sd);
+    if(!shown.length) return '';
+    const items = shown;
 
     const ih = (k,label) => {
       const on = F.iCol===k;
@@ -2782,8 +2838,15 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     };
 
     let h = `<div class="slist" style="overflow:visible"><div class="fcolhead">
-      <div class="pl-h" style="border-bottom:none;padding-bottom:8px"><h3>Items</h3><span class="tag printhide">tap for detail</span></div>
+      <div class="pl-h" style="border-bottom:none;padding-bottom:8px"><h3>Items</h3>
+        <span class="printhide" style="display:flex;gap:8px;align-items:center">
+        ${nSel?`<button class="lbtogg${F.itemOnly?' on':''}" data-iact="only">Selected only (${nSel})</button>
+               <button class="lbtogg" data-iact="clear">Clear</button>`
+             :`<span class="tag">tap for detail &middot; tick to select</span>`}
+        </span></div>
       <div class="figrid-h">
+        <span class="fsel printhide"><input type="checkbox" id="fItemAll"${
+          items.length && items.every(x=>F.selItems.has(x.name)) ? ' checked':''}></span>
         ${ih('name','Item')}${ih('act','Used')}${ih('tgt','Target')}${ih('eff','Efficiency')}${ih('rank','Status')}
       </div>
     </div>`;
@@ -2793,8 +2856,10 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
       const open = F.open.has(k);
       const cc = chainCheck(r);
       const ccBad = cc && Math.abs(cc.diff)>0.01;
-      h += `<div class="firow${open?' open':''}" data-k="${k}">
+      h += `<div class="firow${open?' open':''}${F.selItems.has(String(r.item||''))?' picked':''}" data-k="${k}">
         <div class="fihead">
+          <span class="fsel printhide"><input type="checkbox" data-ipick="${k}"${
+            F.selItems.has(String(r.item||''))?' checked':''}></span>
           <span class="finame">${titleCase(r.item)}</span>
           <span class="finum">${r.act===null?'—':(+r.act).toLocaleString()}</span>
           <span class="finum">${r.tgt===null?'—':(+r.tgt).toLocaleString()}</span>
