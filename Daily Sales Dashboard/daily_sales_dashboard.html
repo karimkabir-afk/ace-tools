@@ -2367,6 +2367,14 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
     return DW[d.getDay()]+' · '+MONTHS[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear(); };
   const dollar = n => (n<0?'-$':'$')+Math.abs(Math.round(n)).toLocaleString();
   const signDollar = n => (n<0?'-$':'+$')+Math.abs(Math.round(n)).toLocaleString();
+  /* Item variance is a count, not money: used minus target in the same
+     units as the two columns beside it. */
+  const countVar = r => (r.act===null || r.tgt===null) ? null : (+r.act) - (+r.tgt);
+  const fmtCountVar = v => {
+    if(v===null) return '—';
+    const n = Math.round(v*100)/100;
+    return (n>0?'+':'') + n.toLocaleString();
+  };
   const pct = n => Math.round(n*100)+'%';
   const titleCase = s => s.toLowerCase().replace(/(^|\s|\/|-)\S/g, c=>c.toUpperCase());
 
@@ -2813,7 +2821,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
         tgt:    x.r.tgt===null ? null : +x.r.tgt,
         eff:    x.flag.eff===undefined ? null : x.flag.eff,
         rank:   ITEM_RANK[x.flag.key] ?? 9,
-        vard:   (x.r.actd||0) - (x.r.tgtd||0),
+        vard:   (x.r.act===null || x.r.tgt===null) ? null : (+x.r.act) - (+x.r.tgt),
         impact: Math.abs((x.r.actd||0) - (x.r.tgtd||0))
       }));
 
@@ -2875,8 +2883,8 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
           <span class="finame">${titleCase(r.item)}</span>
           <span class="finum">${r.act===null?'—':(+r.act).toLocaleString()}</span>
           <span class="finum">${r.tgt===null?'—':(+r.tgt).toLocaleString()}</span>
-          <span class="finum" style="color:${((r.actd||0)-(r.tgtd||0))>0?'var(--red)':'var(--mut)'}">${
-            signDollar((r.actd||0)-(r.tgtd||0))}</span>
+          <span class="finum" style="color:${countVar(r)>0?'var(--red)':'var(--mut)'}">${
+            fmtCountVar(countVar(r))}</span>
           <span class="finum fieff fe-${flag.effCls}">${flag.effLabel}</span>
           <span class="fistat"><span class="fbadge fb-${flag.statusCls}">${flag.status}</span></span>
         </div>
