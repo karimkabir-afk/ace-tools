@@ -262,6 +262,8 @@ svg{width:100%;display:block;overflow:visible}
   .fbadge{font-size:9px;padding:2px 5px;white-space:nowrap}
 }
 .fiexp{display:none;padding:0 16px 14px 16px}
+.nonotes .finotes{display:none}
+.nonotes .figrid{margin-bottom:0}
 .firow.open .fiexp{display:block}
 .figrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
 .figrid .fg{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
@@ -2385,7 +2387,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
   const F = { date:null, store:null, open:new Set(), loaded:false, loading:false, scope:'all',
                sort:'worst', iCol:null, iDir:'desc',
                selRows:new Set(), selOnly:false,
-               selItems:new Set(), itemOnly:false };
+               selItems:new Set(), itemOnly:false, notes:true };
 
   // Stores in play for the current scope. Food rows carry names only, so the
   // AD match runs through adKey() to absorb the Louisville/Glasgow/Nashville
@@ -2784,6 +2786,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
       b.addEventListener('click', ev=>{
         ev.stopPropagation();
         if(b.dataset.iact==='only') F.itemOnly = !F.itemOnly;
+        else if(b.dataset.iact==='notes') F.notes = !F.notes;
         else { F.selItems.clear(); F.itemOnly = false; }
         renderFood();
       });
@@ -2858,12 +2861,14 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
              (on ? `<b>${F.iDir==='asc'?'▲':'▼'}</b>` : '')+`</span>`;
     };
 
-    let h = `<div class="slist" style="overflow:visible"><div class="fcolhead">
+    let h = `<div class="slist${F.notes?'':' nonotes'}" style="overflow:visible"><div class="fcolhead">
       <div class="pl-h" style="border-bottom:none;padding-bottom:8px"><h3>Items</h3>
         <span class="printhide" style="display:flex;gap:8px;align-items:center">
         ${nSel?`<button class="lbtogg${F.itemOnly?' on':''}" data-iact="only">Selected only (${nSel})</button>
                <button class="lbtogg" data-iact="clear">Clear</button>`
              :`<span class="tag">tap for detail &middot; tick to select</span>`}
+        <button class="lbtogg${F.notes?' on':''}" data-iact="notes"
+          title="Show or hide the working and advice inside an expanded item">Notes</button>
         </span></div>
       <div class="figrid-h">
         <span class="fsel printhide"><input type="checkbox" id="fItemAll"${
@@ -2898,9 +2903,11 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
             <div class="fg"><div class="l">Ending</div><div class="v">${(r.end??0).toLocaleString()}</div></div>
             <div class="fg"><div class="l">Used</div><div class="v">${(r.act??0).toLocaleString()}</div></div>
           </div>
-          <div class="fmath">${(r.beg??0).toLocaleString()} + ${(r.pur??0).toLocaleString()} − ${(r.end??0).toLocaleString()} = ${(r.act??0).toLocaleString()} used · target ${(r.tgt??0).toLocaleString()} · ${signDollar((r.actd||0)-(r.tgtd||0))}</div>
-          ${ccBad?`<div class="fadvice warn" style="margin-bottom:5px">⚠ Beginning (${(r.beg??0).toLocaleString()}) doesn't match previous ending on ${fmtD(cc.prevDt)} (${cc.prevEnd.toLocaleString()}) — off by ${Math.abs(Math.round(cc.diff)).toLocaleString()}.</div>`:''}
-          <div class="fadvice ${flag.cls==='r'?'bad':flag.cls==='a'?'warn':''}">${flag.advice}</div>
+          <div class="finotes">
+            <div class="fmath">${(r.beg??0).toLocaleString()} + ${(r.pur??0).toLocaleString()} − ${(r.end??0).toLocaleString()} = ${(r.act??0).toLocaleString()} used · target ${(r.tgt??0).toLocaleString()} · ${signDollar((r.actd||0)-(r.tgtd||0))}</div>
+            ${ccBad?`<div class="fadvice warn" style="margin-bottom:5px">⚠ Beginning (${(r.beg??0).toLocaleString()}) doesn't match previous ending on ${fmtD(cc.prevDt)} (${cc.prevEnd.toLocaleString()}) — off by ${Math.abs(Math.round(cc.diff)).toLocaleString()}.</div>`:''}
+            <div class="fadvice ${flag.cls==='r'?'bad':flag.cls==='a'?'warn':''}">${flag.advice}</div>
+          </div>
         </div>
       </div>`;
     });
