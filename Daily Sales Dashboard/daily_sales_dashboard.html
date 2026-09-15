@@ -243,6 +243,7 @@ svg{width:100%;display:block;overflow:visible}
 .figrid-h{padding:0 16px 9px;font-size:9.5px;color:var(--mut2);text-transform:uppercase;
   letter-spacing:.07em;font-family:'Spline Sans Mono',monospace}
 .figrid-h span+span{text-align:right}
+.figrid-h>span:nth-child(2){text-align:left}
 .firow .finame{font-size:13px;font-weight:500}
 .firow.picked{background:var(--rowhov)}
 @media print{.firow .fihead,.figrid-h{grid-template-columns:minmax(0,1fr) 44px 44px 50px 84px}}
@@ -2696,7 +2697,7 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
 
     // streak strip — items on target per day, ✕ = no count, – = no data that day
     const missed = stk.filter(s=>s.kind==='nocount').length;
-    h += `<div class="hero" style="display:flex;justify-content:space-between;align-items:center;padding:16px 18px;gap:14px;flex-wrap:wrap">
+    const strip = `<div class="hero" style="display:flex;justify-content:space-between;align-items:center;padding:16px 18px;gap:14px;flex-wrap:wrap">
       <div>
         <div class="lab" style="margin:0">Last 7 days</div>
         <div style="font-size:10.5px;color:${missed?'var(--red)':'var(--mut2)'};margin-top:4px;font-family:'Spline Sans Mono',monospace">
@@ -2708,6 +2709,14 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
       </div>`).join('')}</div>
     </div>`;
 
+    const tiles = `<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+        <div class="kpi"><div class="lab">Used</div><div class="v">${dollar(pAct)}</div>${
+          picked?`<div class="kcap">${iv.shown.length} of ${iv.all.length} items</div>`:''}</div>
+        <div class="kpi"><div class="lab">Target</div><div class="v">${dollar(pTgt)}</div></div>
+        <div class="kpi"><div class="lab">Variance</div><div class="v" style="color:${
+          pVar>0?'var(--red)':Math.abs(pVar)<50?'var(--grn)':'var(--gold2)'}">${signDollar(pVar)}</div></div>
+      </div>`;
+
     if(sd.status!=='counted') {
       const missTgt = sd.tgtd||0;
       h += `<div class="slist"><div class="fnocount">
@@ -2718,16 +2727,11 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
           : (missTgt>0 ? 'Sales expected '+dollar(missTgt)+' of food usage — nothing was recorded.' : 'No data was submitted for this date.')}</div>
       </div></div>`;
       if(sd.status==='broken') h += renderItems(sd);
+      h += strip;
     } else {
-      // KPI row
-      h += `<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
-        <div class="kpi"><div class="lab">Used</div><div class="v">${dollar(pAct)}</div>${
-          picked?`<div class="kcap">${iv.shown.length} of ${iv.all.length} items</div>`:''}</div>
-        <div class="kpi"><div class="lab">Target</div><div class="v">${dollar(pTgt)}</div></div>
-        <div class="kpi"><div class="lab">Variance</div><div class="v" style="color:${
-          pVar>0?'var(--red)':Math.abs(pVar)<50?'var(--grn)':'var(--gold2)'}">${signDollar(pVar)}</div></div>
-      </div>`;
       h += renderItems(sd);
+      h += strip;
+      h += tiles;
     }
 
     const R=$('foodResults');
