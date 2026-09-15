@@ -2719,14 +2719,17 @@ const FOOD_URL = 'https://script.google.com/macros/s/AKfycbyQy_EvH9-sOBzVMzewPVV
 
     if(sd.status!=='counted') {
       const missTgt = sd.tgtd||0;
-      h += `<div class="slist"><div class="fnocount">
+      const panel = `<div class="slist"><div class="fnocount">
         <div style="font-size:30px">✕</div>
         <div class="big">${sd.status==='broken'?'Incorrect count':'No count submitted'}</div>
         <div class="sub">${sd.status==='broken'
           ? 'Total recorded usage is negative — inventory can’t grow on its own.<br>Beginning counts or purchases are missing.'
           : (missTgt>0 ? 'Sales expected '+dollar(missTgt)+' of food usage — nothing was recorded.' : 'No data was submitted for this date.')}</div>
       </div></div>`;
-      if(sd.status==='broken') h += renderItems(sd);
+      // With items to show, the explanation reads better under them; with no
+      // count at all the panel is the only thing there is to say.
+      if(sd.status==='broken') h += renderItems(sd) + panel;
+      else h += panel;
       h += strip;
     } else {
       h += renderItems(sd);
