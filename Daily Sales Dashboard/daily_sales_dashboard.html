@@ -843,8 +843,8 @@ try{var t=localStorage.getItem('aceTheme');if(t==='light')document.documentEleme
    and food say "Louisville Road" / "Glassgow" / "Nashville Road" — so match on
    a normalised key with those three aliases folded in, never on the raw name.
    Source: the Store Details tab of the sales workbook.                       */
-const AD_LIST = ['Haley Bush','Brooke Wheat','Marcela Villanueva','Dawn Tetzlaff'];
-const AD_STORES = {
+let AD_LIST = ['Haley Bush','Brooke Wheat','Marcela Villanueva','Dawn Tetzlaff'];
+let AD_STORES = {
   'Haley Bush':         ['Bardstown','Dixie','Etown','Fern Creek','Broadway','Interchange Dr','Okolona'],
   'Brooke Wheat':       ['Middletown','Paris Pike','Veterans','State Street','Fischer Park','Taylorsville'],
   'Marcela Villanueva': ['1st Avenue','Newburg','Menards','Owensboro'],
@@ -858,7 +858,7 @@ function adKey(s){
   return k;
 }
 /* Scorecard rows identify stores by id only, so keep an id-keyed view too. */
-const STORE_META = {
+let STORE_META = {
   '5671':{n:'Bardstown',      ad:'Haley Bush', t:'Legacy Stores'},
   '5745':{n:'Dixie',          ad:'Haley Bush', t:'Legacy Stores'},
   '5890':{n:'Etown',          ad:'Haley Bush', t:'Legacy Stores'},
@@ -887,9 +887,12 @@ const nameOfSid = sid => (STORE_META[String(sid)]||{}).n || String(sid);
 const typeOfSid = sid => (STORE_META[String(sid)]||{}).t  || null;
 const adOfSid   = sid => (STORE_META[String(sid)]||{}).ad || null;
 
-const AD_BY_STORE = (()=>{ const m={};
-  AD_LIST.forEach(ad => AD_STORES[ad].forEach(sn => { m[adKey(sn)] = ad; }));
-  return m; })();
+function buildADIndex(){
+  const m = {};
+  AD_LIST.forEach(ad => (AD_STORES[ad]||[]).forEach(sn => { m[adKey(sn)] = ad; }));
+  return m;
+}
+let AD_BY_STORE = buildADIndex();
 const adOf    = sn => AD_BY_STORE[adKey(sn)] || null;
 const isAD    = sc => typeof sc === 'string' && sc.slice(0,3) === 'ad:';
 const adName  = sc => sc.slice(3);
@@ -908,13 +911,52 @@ function injectADButtons(segId, beforeSelector) {
     seg.insertBefore(b, anchor);
   });
 }
-injectADButtons('scope',   '[data-s="store"]');
-injectADButtons('lbScope', '[data-s="store"]');
-injectADButtons('fdScope', null);
-injectADButtons('scScope', '[data-s="store"]');
+const AD_SEGS = [['scope','[data-s="store"]'], ['lbScope','[data-s="store"]'],
+                 ['fdScope',null], ['scScope','[data-s="store"]']];
+AD_SEGS.forEach(([id,anchor]) => injectADButtons(id, anchor));
+
+/* The Store Details tab is the source of truth for who runs what. Read it at
+   load time so a new store or a reassignment shows up without a code change;
+   the table above is the fallback when that read fails. */
+function applyRoster(list){
+  const open = list.filter(o => o && o.name && o.ad && !o.closed);
+  if(!open.length) return false;            // nothing usable — keep the fallback
+  const byAd = {};
+  open.forEach(o => { (byAd[o.ad] = byAd[o.ad] || []).push(o.name); });
+  AD_STORES = byAd;
+  AD_LIST = Object.keys(byAd).sort((a,b) =>
+    byAd[b].length - byAd[a].length || a.localeCompare(b));
+  const meta = {};
+  list.forEach(o => { if(o.sid) meta[String(o.sid)] = {n:o.name, ad:o.ad||null, t:o.type||null}; });
+  STORE_META = meta;
+  AD_BY_STORE = buildADIndex();
+  AD_SEGS.forEach(([id,anchor]) => {
+    const seg = document.getElementById(id);
+    if(!seg) return;
+    [...seg.querySelectorAll('[data-s^="ad:"]')].forEach(b => b.remove());
+    injectADButtons(id, anchor);
+  });
+  return true;
+}
+
+async function loadRoster(){
+  try{
+    const c = new AbortController();
+    const t = setTimeout(()=>c.abort(), 25000);
+    let resp;
+    try { resp = await fetch(APPS_URL + '?data=stores', {redirect:'follow', cache:'no-store', signal:c.signal}); }
+    finally { clearTimeout(t); }
+    if(!resp || !resp.ok) return;
+    const j = await resp.json();
+    if(j && j.ok !== false && Array.isArray(j.stores)) applyRoster(j.stores);
+  }catch(err){
+    // keep the built-in roster; the buttons still work
+  }
+}
 
 /* ── Replace this URL with your deployed Apps Script URL ──────────────────── */
 const APPS_URL = 'https://script.google.com/macros/s/AKfycbxodxx9DHMd753fiJwMQKtSzDJCrjJ9hQ3dIxjtCaR_3PYwORxEpXCSsxnK1o6qdcwGXw/exec';
+loadRoster();
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 (async () => {

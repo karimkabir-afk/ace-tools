@@ -31,6 +31,7 @@ function doGet(e) {
   try {
     if (p.diag) return json(diagnose());
     if (p.data === 'scorecard') return json(buildScorecard());
+    if (p.data === 'stores') return json(buildStores());
     return json(buildPayload());
   } catch (err) {
     return json({ ok: false, error: String(err && err.message || err) });
@@ -114,6 +115,87 @@ function buildScorecard() {
     meta: {
       tab: sheet.getName(), rows: rows.length,
       first: sks[0], last: sks[sks.length - 1],
+      generated: new Date().toISOString()
+    }
+  };
+}
+
+
+/* ── Store roster ──────────────────────────────────────────────────────────
+   Area Director assignments, store names and closures, read from the
+   "Store Details" tab and joined to the store-type lookup.
+
+   That tab also carries Federal Tax IDs, store/AD/GM email addresses and
+   phone numbers. The dashboard is a public page, so none of that leaves
+   here: only id, name, Area Director, type and a closed flag.             */
+var ROSTER_NAME = 'Store Details';
+var TYPES_NAME  = 'Sheet9';
+
+function buildStores() {
+  var ss = openBook();
+
+  // store id -> type, from the little lookup tab
+  var types = {};
+  var tSheet = ss.getSheetByName(TYPES_NAME);
+  if (tSheet && tSheet.getLastRow() > 1) {
+    var tv = tSheet.getDataRange().getValues();
+    var tH = tv[0].map(function (h) { return String(h).trim(); });
+    var iID = tH.indexOf('StoreID'), iTY = tH.indexOf('StoreType');
+    if (iID >= 0 && iTY >= 0) {
+      for (var t = 1; t < tv.length; t++) {
+        var tid = String(tv[t][iID] == null ? '' : tv[t][iID]).replace(/\D/g, '');
+        if (tid) types[String(parseInt(tid, 10))] = String(tv[t][iTY] || '').trim();
+      }
+    }
+  }
+
+  var sheet = ss.getSheetByName(ROSTER_NAME);
+  if (!sheet || !hasCols(sheet, ['Store', 'Area Director'])) {
+    var all = ss.getSheets();
+    sheet = null;
+    for (var i = 0; i < all.length; i++) {
+      if (hasCols(all[i], ['Store', 'Area Director'])) { sheet = all[i]; break; }
+    }
+  }
+  if (!sheet) throw new Error('No store roster found. Tabs: ' +
+    ss.getSheets().map(function (x) { return x.getName(); }).join(', '));
+
+  var v = sheet.getDataRange().getValues();
+  var H = v[0].map(function (h) { return String(h).trim(); });
+  var col = function (n) { return H.indexOf(n); };
+  var iStore = col('Store'), iAD = col('Area Director'), iClosed = col('Permanently Closed');
+  if (iStore < 0) throw new Error('No "Store" column on "' + sheet.getName() + '"');
+
+  var rows = [];
+  for (var r = 1; r < v.length; r++) {
+    var raw = String(v[r][iStore] == null ? '' : v[r][iStore]).trim();
+    if (!raw) continue;
+    // "Bardstown - 5671" -> name + id. Rows without an id are Corporate, not stores.
+    var m = raw.match(/^(.*?)\s*-\s*(\d+)\s*$/);
+    if (!m) continue;
+    var name = m[1].trim(), sid = String(parseInt(m[2], 10));
+    if (!name || !sid) continue;
+    var ad = iAD >= 0 ? String(v[r][iAD] == null ? '' : v[r][iAD]).trim() : '';
+    var closedRaw = iClosed >= 0 ? v[r][iClosed] : '';
+    rows.push({
+      sid:    sid,
+      name:   name,
+      ad:     ad || null,
+      type:   types[sid] || null,
+      closed: closedRaw ? 1 : 0
+    });
+  }
+  if (!rows.length) throw new Error('Roster tab "' + sheet.getName() + '" produced 0 stores');
+
+  var ads = {};
+  rows.forEach(function (o) { if (o.ad && !o.closed) ads[o.ad] = (ads[o.ad] || 0) + 1; });
+
+  return {
+    ok: true, stores: rows,
+    meta: {
+      tab: sheet.getName(), stores: rows.length,
+      open: rows.filter(function (o) { return !o.closed; }).length,
+      directors: ads,
       generated: new Date().toISOString()
     }
   };
