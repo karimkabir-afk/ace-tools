@@ -47,14 +47,19 @@ function doGet(e) {
      rating, cert, rev      higher is better
      acr, sos, mi           lower is better
      rv, msd, ltec  (Y/N)   Y is worse                                       */
-var SCORE_NAME = 'Scorecard';
+/* v2 restates history and reaches further back; the original tab stays as a
+   fallback so a rename or deletion does not take the view down. */
+var SCORE_NAMES = ['Scorecard v2', 'Scorecard'];
 var SCORE_REQUIRED = ['Restaurant', 'Overall Rating'];
 
 function buildScorecard() {
   var ss = openBook();
-  var sheet = ss.getSheetByName(SCORE_NAME);
-  if (!sheet || !hasCols(sheet, SCORE_REQUIRED)) {
-    sheet = null;
+  var sheet = null;
+  for (var n = 0; n < SCORE_NAMES.length && !sheet; n++) {
+    var cand = ss.getSheetByName(SCORE_NAMES[n]);
+    if (cand && hasCols(cand, SCORE_REQUIRED)) sheet = cand;
+  }
+  if (!sheet) {
     var all = ss.getSheets();
     for (var i = 0; i < all.length; i++) {
       if (hasCols(all[i], SCORE_REQUIRED)) { sheet = all[i]; break; }

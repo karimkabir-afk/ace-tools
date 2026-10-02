@@ -3043,6 +3043,12 @@ const SCORE = (() => {
      because a store with no complaints still has real numbers elsewhere. */
   const measured = o => METRICS.some(m => o[m.k] !== null && o[m.k] !== 0);
 
+  const scopeLblFor = rows =>
+      S.scope==='all'   ? 'All '+rows.length+' stores'
+    : S.scope==='store' ? nameOfSid(S.selStore)
+    : isAD(S.scope)     ? adName(S.scope)+' — '+rows.length+' stores'
+    : isTY(S.scope)     ? tyLabel(S.scope)+' — '+rows.length+' stores' : '';
+
   const isTY     = sc => typeof sc==='string' && sc.slice(0,3)==='ty:';
   const tyName   = sc => sc.slice(3);
   const tyLabel  = sc => tyName(sc).replace(' Stores','').replace(' Acquisition','');
@@ -3050,6 +3056,16 @@ const SCORE = (() => {
   const selLabel = () => S.scope==='store' ? nameOfSid(S.selStore)
                    : isAD(S.scope) ? adName(S.scope)+' (mean)'
                    : isTY(S.scope) ? tyLabel(S.scope)+' (mean)' : 'Selection';
+
+  /* A round that has started but not been scored yet carries a full set of
+     empty rows. Listing it is fine; opening on it is not, so default to the
+     newest period that actually has numbers. */
+  const periodHasData = p => D.rows.some(r =>
+    r.pt===p.pt && r.sk===p.sk && !r.avg && measured(r));
+  const newestWithData = pt => {
+    const of = D.periods.filter(p => p.pt===pt);
+    return of.find(periodHasData) || of[0] || null;
+  };
 
   function ensure(){ if(!D.loaded && !D.loading) load(); else render(); }
 
@@ -3074,7 +3090,7 @@ const SCORE = (() => {
       D.rows.forEach(r=>{ const k = r.pt+'|'+r.sk;
         if(!seen.has(k)) seen.set(k,{pt:r.pt, sk:r.sk, per:r.per}); });
       D.periods = [...seen.values()].sort((a,b)=>b.sk-a.sk);
-      const first = D.periods.find(p=>p.pt===S.type) || D.periods[0];
+      const first = newestWithData(S.type) || D.periods[0];
       S.type = first.pt; S.sk = first.sk;
       D.loaded = true; D.loading = false;
       buildStoreSel(); render();
@@ -3137,6 +3153,11 @@ const SCORE = (() => {
     // the benchmark row is always the whole portfolio, even when the table is
     // filtered to one AD, so the label has to say how many stores it covers
     const portfolioN = D.rows.filter(r=>r.pt===S.type && r.sk===S.sk && !r.avg).length;
+    // The brand does not always publish a group average for a round still in
+    // progress. When it is missing, fall back to our own mean rather than
+    // showing a screen of dashes -- and say which one is on screen.
+    const haveGroup = !!(avg && METRICS.some(m => avg[m.k] !== null));
+    const useBrand  = isGroup() && haveGroup;
 
     if(S.store){ renderStore(avg, per); return; }
     let rows = scoped();
@@ -3162,15 +3183,21 @@ const SCORE = (() => {
     }
 
     const live  = rows.filter(measured);          // averages ignore unmeasured stores
+    if(!live.length){
+      $('scoreResults').innerHTML =
+        '<div class="rhead"><div><div class="rtitle">Scorecard</div>' +
+        '<div class="rscope">'+scopeLblFor(rows)+'</div></div>' +
+        '<div class="rmeta">'+(S.type==='rtd'?'Round to date':'Monthly')+'<br>'+perLabel(per)+'</div></div>' +
+        '<div class="empty">Not scored yet.<br><span style="font-size:12px;color:var(--mut2)">' +
+        perLabel(per)+' has no results published.</span></div>';
+      return;
+    }
     const rated = live.filter(o=>o.rating!==null);
     const mean  = rated.length ? rated.reduce((s,o)=>s+o.rating,0)/rated.length : null;
     const under = rated.filter(o=>o.rating<3).length;
     const ltec  = rows.filter(o=>o.ltec===1).length;
 
-    const scopeLbl = S.scope==='all' ? 'All '+rows.length+' stores'
-                   : S.scope==='store' ? nameOfSid(S.selStore)
-                   : isAD(S.scope) ? adName(S.scope)+' \u2014 '+rows.length+' stores'
-                   : isTY(S.scope) ? tyLabel(S.scope)+' \u2014 '+rows.length+' stores' : '';
+    const scopeLbl = scopeLblFor(rows);
 
     let h = '<div class="rhead"><div><div class="rtitle">Scorecard</div>' +
       '<div class="rscope">'+scopeLbl+'</div></div>' +
@@ -3179,10 +3206,10 @@ const SCORE = (() => {
     // One tile per metric. At group scope the brand's own weighted figure is
     // the answer; for a subset we must average the stores ourselves, and that
     // is captioned as a mean so it is never mistaken for an official number.
-    const cap = isGroup() ? 'brand figure' : 'mean of '+live.length;
+    const cap = useBrand ? 'brand figure' : 'mean of '+live.length;
     h += '<div class="kpis kpis-6">' + METRICS.map(m=>{
       let v;
-      if(isGroup()) v = avg ? avg[m.k] : null;
+      if(useBrand) v = avg[m.k];
       else {
         const got = live.filter(o=>o[m.k]!==null);
         v = got.length ? got.reduce((t,o)=>t+o[m.k],0)/got.length : null;
@@ -3195,7 +3222,7 @@ const SCORE = (() => {
         const a = avg[m.k];
         if(m.dir>0 ? v < a*0.95 : v > a*1.05) colour = 'var(--red)';
       }
-      const grpNote = (!isGroup() && avg && avg[m.k]!==null)
+      const grpNote = (!useBrand && avg && avg[m.k]!==null)
         ? 'ptf '+fmt(avg[m.k],m.dp,m.trim) : cap;
       return '<div class="kpi"><div class="lab">'+m.lab+'</div>' +
         '<div class="v" style="color:'+colour+'">'+fmt(v,m.dp,m.trim)+'</div>' +
@@ -3207,11 +3234,12 @@ const SCORE = (() => {
         rated.length+' under 3.0</span>' +
       '<span><b style="color:'+(ltec?'var(--red)':'var(--grn)')+'">'+ltec+'</b> LTEC '+
         (ltec===1?'failure':'failures')+'</span>' +
-      (isGroup() ? '' : '<span>portfolio rating <b>'+(avg?fmt(avg.rating,1):'\u2014')+'</b></span>') +
+      ((isGroup() || !avg || avg.rating===null) ? ''
+        : '<span>portfolio rating <b>'+fmt(avg.rating,1)+'</b></span>') +
       '</div>';
 
     h += trendCard(seriesFor(rows.map(o=>o.sid), isGroup()),
-                   (METRICS.find(m=>m.k===S.metric)||{}).lab + ' over time', isGroup());
+                   (METRICS.find(m=>m.k===S.metric)||{}).lab + ' over time', useBrand);
 
     const hc = (k,lab,cls) => {
       const on = S.col===k;
@@ -3253,7 +3281,7 @@ const SCORE = (() => {
     // portfolio is on screen, our own mean when a group is filtered. A single
     // store needs neither — the row above it already is the answer.
     const skipped = rows.length - live.length;
-    if(!isGroup() && live.length > 1){
+    if(!useBrand && live.length > 1){
       const meanOf = k => {
         const got = live.filter(o=>o[k]!==null);
         return got.length ? got.reduce((t,o)=>t+o[k],0)/got.length : null;
@@ -3266,7 +3294,7 @@ const SCORE = (() => {
         '<span class="schide"></span><span class="schide"></span></div>';
     }
 
-    if(isGroup() && avg){
+    if(useBrand){
       h += '<div class="scrow lbtot" style="cursor:default"><span class="lbstripe"></span>' +
         '<span class="scname"><span>Portfolio average</span></span>' +
         '<span class="schide scgm">'+portfolioN+' stores \u00b7 weighted</span>' +
@@ -3354,7 +3382,8 @@ const SCORE = (() => {
         sk:p.sk, per:p.per,
         // the brand's group figure is weighted; our mean is not, so prefer
         // theirs whenever the selection is the whole group
-        val: official ? grp : (mine.length ? mine.reduce((t,r)=>t+r[k],0)/mine.length : null),
+        val: (official && grp !== null) ? grp
+             : (mine.length ? mine.reduce((t,r)=>t+r[k],0)/mine.length : null),
         grp: grp
       };
     }).filter(d=>d.val!==null || d.grp!==null);
@@ -3455,7 +3484,7 @@ const SCORE = (() => {
     const b=e.target.closest('button'); if(!b) return;
     [...$('scType').children].forEach(x=>x.classList.remove('on'));
     b.classList.add('on'); S.type=b.dataset.t;
-    const first = D.periods.find(p=>p.pt===S.type); if(first) S.sk=first.sk;
+    const first = newestWithData(S.type); if(first) S.sk=first.sk;
     S.store=null; render();
   });
   $('scPeriods').addEventListener('click', e=>{
