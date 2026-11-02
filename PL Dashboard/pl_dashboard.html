@@ -300,6 +300,20 @@ svg{width:100%;display:block;overflow:visible}
 .pcttog button:active{transform:scale(.94)}
 .pcttog button.on{background:var(--gold);color:#1a1206}
 
+/* chart/table view toggle */
+.vtog{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--bg2)}
+.vtog button{font-size:13px;width:30px;height:26px;border:none;background:transparent;color:var(--mut);cursor:pointer;transition:.14s;display:flex;align-items:center;justify-content:center}
+.vtog button.on{background:var(--card2,#1e2a22);color:var(--gold)}
+
+/* trend table */
+.trend-tbl{width:100%;border-collapse:collapse;font-size:12px;font-family:'Spline Sans Mono',monospace;margin-top:4px}
+.trend-tbl th{font-size:10px;font-weight:600;color:var(--mut2);text-transform:uppercase;letter-spacing:.06em;padding:5px 8px;text-align:right;border-bottom:1px solid var(--line2)}
+.trend-tbl th:first-child{text-align:left}
+.trend-tbl td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line2);color:var(--ink2)}
+.trend-tbl td:first-child{text-align:left;color:var(--mut)}
+.trend-tbl tr:last-child td{font-weight:700;color:var(--ink);border-top:1px solid var(--line);border-bottom:none}
+.trend-tbl .pos{color:#5fcf80}.trend-tbl .neg{color:#e8736b}
+
 /* passphrase gate overlay */
 #gate{position:fixed;inset:0;z-index:9999;background:var(--bg);
   display:flex;align-items:center;justify-content:center;padding:24px}
@@ -598,7 +612,7 @@ const _tl = document.getElementById('portfolioTagline');
 if(_tl) _tl.textContent = `${STORES.length}-store portfolio · P1 ${_years[0]} – ${_latestKey} · live`;
 const S={ scope:'all', store:STORES[0].name, custom:new Set(), pmode:'single', single:_latestKey,
   year:_latestYear, rFrom:_rFrom, rTo:_latestKey, view:'pl', trendMode:'combined', trendPct:null,
-  cmp:false, cmode:'single', cSingle:_prevKey, cYear:_latestYear-1, cRFrom:_rFrom.replace(String(_latestYear),String(_latestYear-1)), cRTo:_prevKey, cmpNorm:false };
+  cmp:false, cmode:'single', cSingle:_prevKey, cYear:_latestYear-1, cRFrom:_rFrom.replace(String(_latestYear),String(_latestYear-1)), cRTo:_prevKey, cmpNorm:false, trendView:'chart' };
 
 /* ---------- populate selects ---------- */
 function opts(el,arr,val){ el.innerHTML=arr.map(x=>`<option value="${x}">${x}</option>`).join(''); el.value=val; }
@@ -767,6 +781,7 @@ function render(){
   const nb=$$('normBtn'); if(nb) nb.onclick=()=>{ S.cmpNorm=!S.cmpNorm; render(); };
   const pt=$$('pctTog'); if(pt) pt.onclick=(e)=>{ const b=e.target.closest('button'); if(!b)return; S.trendPct=(b.dataset.m==='pct'); render(); };
   const dl=$$('dlBtn'); if(dl) dl.onclick=()=>downloadCSV(pset,plabel);
+  const vt=$$('viewTog'); if(vt) vt.onclick=e=>{ const b=e.target.closest('button'); if(!b)return; S.trendView=b.dataset.v; render(); };
 }
 
 function downloadCSV(pset, plabel){
@@ -1131,9 +1146,70 @@ function renderTrend(pset){
       <button class="${pctMode?'on':''}" data-m="pct">%</button>
     </div>` : '';
 
-  return `<div class="chart" id="chartBox">
-    <div class="chart-head"><h3>${title}${perStore?' · per store':''}</h3><div class="badges">${pctToggle}</div></div>
-    <div class="chart-readout" id="readout"></div>
+  // chart / table view toggle
+  const isTable = S.trendView==='table';
+  const viewTog = `<div class="vtog" id="viewTog">
+    <button class="${!isTable?'on':''}" data-v="chart" title="Chart">&#x1F4C8;</button>
+    <button class="${isTable?'on':''}" data-v="table" title="Table">&#x22EE;&#x22EE;</button>
+  </div>`;
+
+  // build table HTML
+  const fmtV2 = v => pctMode? fmtPct(v) : $(v);
+  let tableHTML='';
+  if(isTable){
+    const isCmp = series.length===2;
+    if(isCmp){
+      const [selS, cmpS] = series;
+      let rows='', totSel=0, totCmp=0;
+      ks.forEach((k,i)=>{
+        const sv=selS.data[i]??null, cv=cmpS.data[i]??null;
+        if(sv===null&&cv===null) return;
+        const delta=sv!==null&&cv!==null?sv-cv:null;
+        const dpct=delta!==null&&cv?delta/Math.abs(cv)*100:null;
+        if(sv!==null) totSel+=sv; if(cv!==null) totCmp+=cv;
+        const dCls=delta===null?'':(delta>=0?'pos':'neg');
+        rows+=`<tr>
+          <td>${k}</td>
+          <td>${sv!==null?fmtV2(sv):'—'}</td>
+          <td>${cv!==null?fmtV2(cv):'—'}</td>
+          <td class="${dCls}">${delta!==null?(delta>=0?'+':'')+fmtV2(delta):'—'}</td>
+          <td class="${dCls}">${dpct!==null?(dpct>=0?'+':'')+dpct.toFixed(1)+'%':'—'}</td>
+        </tr>`;
+      });
+      const totDelta=totSel-totCmp, totPct=totCmp?totDelta/Math.abs(totCmp)*100:null;
+      const tCls=totDelta>=0?'pos':'neg';
+      rows+=`<tr><td>Total</td><td>${fmtV2(totSel)}</td><td>${fmtV2(totCmp)}</td>
+        <td class="${tCls}">${(totDelta>=0?'+':'')+fmtV2(totDelta)}</td>
+        <td class="${tCls}">${totPct!==null?(totPct>=0?'+':'')+totPct.toFixed(1)+'%':'—'}</td></tr>`;
+      tableHTML=`<div style="overflow-x:auto"><table class="trend-tbl">
+        <thead><tr><th>Period</th><th>${selS.lineLabel||'Selected'}</th><th>${cmpS.lineLabel||'Comparison'}</th><th>Var</th><th>Var %</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
+    } else {
+      // single series: show period, value, vs prior, vs prior %
+      const s=series[0];
+      let rows='', tot=0;
+      ks.forEach((k,i)=>{
+        const v=s.data[i]??null; if(v===null) return;
+        const prev=i>0?s.data[i-1]:null;
+        const delta=prev!==null?v-prev:null;
+        const dpct=delta!==null&&prev?delta/Math.abs(prev)*100:null;
+        tot+=v;
+        const dCls=delta===null?'':(delta>=0?'pos':'neg');
+        rows+=`<tr>
+          <td>${k}</td>
+          <td>${fmtV2(v)}</td>
+          <td class="${dCls}">${delta!==null?(delta>=0?'+':'')+fmtV2(delta):'—'}</td>
+          <td class="${dCls}">${dpct!==null?(dpct>=0?'+':'')+dpct.toFixed(1)+'%':'—'}</td>
+        </tr>`;
+      });
+      rows+=`<tr><td>Total</td><td>${fmtV2(tot)}</td><td>—</td><td>—</td></tr>`;
+      tableHTML=`<div style="overflow-x:auto"><table class="trend-tbl">
+        <thead><tr><th>Period</th><th>${title}</th><th>vs Prior</th><th>vs Prior %</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
+    }
+  }
+
+  const chartHTML = `<div class="chart-readout" id="readout"></div>
     <div class="svgwrap">
     <svg id="trendSvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;aspect-ratio:${W}/${H}">
       <defs><linearGradient id="ag" x1="0" x2="0" y1="0" y2="1">
@@ -1145,7 +1221,11 @@ function renderTrend(pset){
       <g id="scrubDots"></g>
     </svg></div>
     ${legend}
-    <div class="scrub-hint">Drag across the chart to read each period</div>
+    <div class="scrub-hint">Drag across the chart to read each period</div>`;
+
+  return `<div class="chart" id="chartBox">
+    <div class="chart-head"><h3>${title}${perStore?' · per store':''}</h3><div class="badges">${pctToggle}${viewTog}</div></div>
+    ${isTable ? tableHTML : chartHTML}
   </div>`;
 }
 let CHART=null;
