@@ -305,6 +305,10 @@ svg{width:100%;display:block;overflow:visible}
 .vtog button{font-size:13px;width:30px;height:26px;border:none;background:transparent;color:var(--mut);cursor:pointer;transition:.14s;display:flex;align-items:center;justify-content:center}
 .vtog button.on{background:var(--card2,#1e2a22);color:var(--gold)}
 
+/* closure annotations */
+.cnote{font-family:'Spline Sans Mono',monospace;font-size:10px;color:var(--amber);margin-top:2px;line-height:1.3;white-space:normal}
+.trend-tbl td .cnote{text-align:left}
+
 /* store view toggle + diverging bars */
 .stog{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--bg2)}
 .stog button{font-family:'Spline Sans Mono',monospace;font-size:11px;font-weight:600;padding:5px 10px;border:none;background:transparent;color:var(--mut);cursor:pointer}
@@ -565,6 +569,33 @@ const HAVE = new Set(RAW.map(keyOf));
 const KEYS = PERIOD_KEYS.filter(k=>HAVE.has(k));
 const YEARS = [2024,2025,2026];
 
+/* ---------- store closures (dates inclusive) ---------- */
+const CLOSURES = [
+  { store:'Bardstown', from:'2025-08-22', to:'2025-11-17', note:'Renovation' },
+  { store:'Etown',     from:'2025-08-03', to:'2025-09-04', note:'Renovation' },
+];
+// fiscal calendar: 13 × 28-day periods, P1 2025 began 2024-12-30
+const P_ANCHOR = Date.UTC(2024,11,30);
+function periodOfDate(iso){
+  const [y,m,d]=iso.split('-').map(Number);
+  const idx=Math.floor(Math.floor((Date.UTC(y,m-1,d)-P_ANCHOR)/864e5)/28);
+  return `P${((idx%13)+13)%13+1} ${2025+Math.floor(idx/13)}`;
+}
+const fmtD = iso => { const [y,m,d]=iso.split('-').map(Number);
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]+' '+d+" '"+String(y).slice(2); };
+for(const c of CLOSURES){
+  c.keys=new Set(); let k=periodOfDate(c.from); const end=periodOfDate(c.to);
+  let [p,y]=k.slice(1).split(' ').map(Number);
+  for(let guard=0;guard<30;guard++){ c.keys.add(`P${p} ${y}`); if(`P${p} ${y}`===end) break; p++; if(p>13){p=1;y++;} }
+  c.label=`Closed ${fmtD(c.from)} – ${fmtD(c.to)} · ${c.note}`;
+}
+function closuresFor(store, ...sets){
+  return CLOSURES.filter(c=>c.store===store && sets.some(s=>s && [...c.keys].some(k=>s.has(k))));
+}
+function noteTag(store, ...sets){
+  return closuresFor(store,...sets).map(c=>`<div class="cnote">⚠ ${c.label}</div>`).join('');
+}
+
 /* ---------- store catalog ---------- */
 const GROUPS = ['Legacy Stores','Kevin Acquisition','Development','Carrols Acquisition'];
 const STORES = [];
@@ -781,6 +812,15 @@ function render(){
     </div>`;
   }
 
+  if(S.scope==='store'){
+    const cpsN = S.cmp? periodSet(S.cmode,S.cSingle,S.cYear,S.cRFrom,S.cRTo) : null;
+    closuresFor(S.store,pset,cpsN).forEach(c=>{
+      const inSel=[...c.keys].some(k=>pset.has(k)), inCmp=cpsN&&[...c.keys].some(k=>cpsN.has(k));
+      const where = inSel&&inCmp? 'both periods' : inSel? 'the selected period' : 'the comparison period';
+      h+=`<div class="warn"><span>⚠ <b>${S.store}</b> ${c.label.replace('Closed','was closed')} (${[...c.keys].join(', ')}). This falls in ${where}, so sales there are understated.</span></div>`;
+    });
+  }
+
   let view='';
   if(S.view==='pl') view=renderPL(data,cmpData);
   else if(S.view==='sales') view=renderSales(data,cmpData,pset);
@@ -932,7 +972,7 @@ function renderSales(d,c,pset){
     h+=`<div class="slist"><div class="pl-h"><h3>Sales by store</h3>${stog}</div>`;
     if(sv!=='list'){
       const rows=arr.map(([nm,v])=>{ const st=STORES.find(s=>s.name===nm);
-        return {nm, type:st?st.type.replace(' Stores','').replace(' Acquisition',''):'', v:v*CTX.fP, cv:(cmap[nm]||0)*CTX.fC}; });
+        return {nm, type:st?st.type.replace(' Stores','').replace(' Acquisition',''):'', v:v*CTX.fP, cv:(cmap[nm]||0)*CTX.fC, note:noteTag(nm,pset,cps)}; });
       h+= sv==='div' ? storeDiverging(rows) : storeTable(rows);
       h+=`</div>`;
       return h;
@@ -942,7 +982,7 @@ function renderSales(d,c,pset){
       if(S.cmp){ const cv=(cmap[nm]||0); const ch=cv*CTX.fC!==0?((v*CTX.fP-cv*CTX.fC)/Math.abs(cv*CTX.fC)*100):null;
         cmp=`<div class="srow-cmp ${ch===null?'':ch>=0?'up':'dn'}">${$(cv*CTX.fC)} · ${ch===null?'—':sign(ch)+ch.toFixed(0)+'%'}</div>`; }
       h+=`<div class="srow"><span class="srank num">${i+1}</span>
-        <div><div class="sname">${nm}</div><div class="stype">${st?st.type.replace(' Stores',''):''}</div>
+        <div><div class="sname">${nm}</div><div class="stype">${st?st.type.replace(' Stores',''):''}</div>${noteTag(nm,pset,cps)}
           <div class="sbar" style="width:${Math.max(8,v/max*100)}%"></div></div>
         <div></div><div class="sval-wrap"><div class="sval">${$(v*CTX.fP)}</div>${cmp}</div></div>`; });
     h+=`</div>`;
@@ -961,7 +1001,7 @@ function storeDiverging(rows){
     const pos=r.ch>=0, w=Math.abs(r.ch)/maxAbs*42;
     const bar = pos ? `left:50%;width:${w}%` : `right:50%;width:${w}%`;
     const lab = pos ? `left:calc(50% + ${w}% + 6px)` : `right:calc(50% + ${w}% + 6px)`;
-    h+=`<div class="dv-row"><div><div class="sname">${r.nm}</div><div class="stype">${r.type}</div></div>
+    h+=`<div class="dv-row"><div><div class="sname">${r.nm}</div><div class="stype">${r.type}</div>${r.note||''}</div>
       <div class="dv-track"><div class="dv-zero"></div><div class="dv-bar ${pos?'up':'dn'}" style="${bar}"></div>
         <div class="dv-lab ${pos?'up':'dn'}" style="${lab}">${sign(r.ch)+r.ch.toFixed(1)}%</div></div>
       <div class="dv-val num">${$(r.v)}<div class="dv-cv">${$(r.cv)}</div></div></div>`;
@@ -979,7 +1019,7 @@ function storeTable(rows){
   sorted.forEach(r=>{
     tv+=r.v; tc+=r.cv;
     const d=r.v-r.cv, p=r.cv? d/Math.abs(r.cv)*100 : null, cls=p===null?'':d>=0?'pos':'neg';
-    body+=`<tr><td>${r.nm}</td><td>${$(r.v)}</td><td>${r.cv?$(r.cv):'—'}</td>
+    body+=`<tr><td>${r.nm}${r.note||''}</td><td>${$(r.v)}</td><td>${r.cv?$(r.cv):'—'}</td>
       <td class="${cls}">${r.cv?(d>=0?'+':'')+$(d):'—'}</td><td class="${cls}">${p===null?'new':sign(p)+p.toFixed(1)+'%'}</td></tr>`;
   });
   const td=tv-tc, tp=tc? td/Math.abs(tc)*100:null, tcls=td>=0?'pos':'neg';
@@ -1013,7 +1053,7 @@ function renderMetric(d,c,pset,field,title){
       if(S.cmp){ const cv=(cmap[nm]||0); const ch=cv*CTX.fC!==0?((v*CTX.fP-cv*CTX.fC)/Math.abs(cv*CTX.fC)*100):null;
         cmp=`<div class="srow-cmp ${ch===null?'':ch>=0?'up':'dn'}">${$(cv*CTX.fC)} · ${ch===null?'—':sign(ch)+ch.toFixed(0)+'%'}</div>`; }
       h+=`<div class="srow"><span class="srank num">${i+1}</span>
-        <div><div class="sname">${nm}</div><div class="stype">${st?st.type.replace(' Stores',''):''}</div></div>
+        <div><div class="sname">${nm}</div><div class="stype">${st?st.type.replace(' Stores',''):''}</div>${noteTag(nm,pset,cps)}</div>
         <div></div><div class="smetric"><div class="mv" style="color:${v<0?'var(--red)':'var(--ink)'}">${$(v*CTX.fP)}</div>
           <div class="mp">${pct(v,smap[nm])}</div>${cmp}</div></div>`; });
     h+=`</div>`;
@@ -1178,6 +1218,19 @@ function renderTrend(pset){
       if(li>=0){ const v=s.data[li],y=ys(v); putLabel(xs(li),y,fmtV(v),s.color,y<padT+16); } });
   }
 
+  // closure shading (single store): gray band over closed periods on the selected axis
+  let shade='';
+  if(S.scope==='store'){
+    const half=(W-padL-padR)/(n-1)/2;
+    CLOSURES.filter(c=>c.store===S.store).forEach(c=>{
+      const idxs=ks.map((k,i)=>c.keys.has(k)?i:-1).filter(i=>i>=0);
+      if(!idxs.length) return;
+      const x0=Math.max(padL,xs(idxs[0])-half), x1=Math.min(W-padR,xs(idxs[idxs.length-1])+half);
+      shade+=`<rect x="${x0}" y="${padT-8}" width="${x1-x0}" height="${H-padB-padT+8}" fill="#8fa394" opacity=".12"/>
+        <text x="${(x0+x1)/2}" y="${padT-1}" text-anchor="middle" font-family="'Spline Sans Mono',monospace" font-size="8" fill="#e0a94a">Closed · ${c.note}</text>`;
+    });
+  }
+
   // x labels
   let labs=''; const step=Math.ceil(n/6);
   ks.forEach((k,i)=>{ if(i%step===0||i===n-1){ const [p,y]=k.split(' ');
@@ -1285,7 +1338,7 @@ function renderTrend(pset){
         <stop offset="0" stop-color="#d4a23a" stop-opacity=".22"/><stop offset="1" stop-color="#d4a23a" stop-opacity="0"/>
       </linearGradient></defs>
       ${mn<0?`<line class="gl" x1="${padL}" x2="${W-padR}" y1="${zeroY}" y2="${zeroY}" stroke-dasharray="2 3"/>`:''}
-      ${paths}${labs}${vlabs}${lineLabels}
+      ${shade}${paths}${labs}${vlabs}${lineLabels}
       <line id="scrubLine" x1="0" y1="${padT}" x2="0" y2="${H-padB}" stroke="#ffffff" stroke-width="1" stroke-opacity="0" stroke-dasharray="2 2"/>
       <g id="scrubDots"></g>
     </svg></div>
