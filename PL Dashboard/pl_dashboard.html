@@ -581,13 +581,20 @@ function periodOfDate(iso){
   const idx=Math.floor(Math.floor((Date.UTC(y,m-1,d)-P_ANCHOR)/864e5)/28);
   return `P${((idx%13)+13)%13+1} ${2025+Math.floor(idx/13)}`;
 }
+const dayIdx = iso => { const [y,m,d]=iso.split('-').map(Number); return Math.floor((Date.UTC(y,m-1,d)-P_ANCHOR)/864e5); };
+const weekOfDate = iso => Math.floor((((dayIdx(iso)%28)+28)%28)/7)+1;
 const fmtD = iso => { const [y,m,d]=iso.split('-').map(Number);
-  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]+' '+d+" '"+String(y).slice(2); };
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]+' '+d; };
 for(const c of CLOSURES){
   c.keys=new Set(); let k=periodOfDate(c.from); const end=periodOfDate(c.to);
   let [p,y]=k.slice(1).split(' ').map(Number);
   for(let guard=0;guard<30;guard++){ c.keys.add(`P${p} ${y}`); if(`P${p} ${y}`===end) break; p++; if(p>13){p=1;y++;} }
-  c.label=`Closed ${fmtD(c.from)} – ${fmtD(c.to)} · ${c.note}`;
+  const [p1,y1]=k.slice(1).split(' '), [p2,y2]=end.slice(1).split(' ');
+  const yy=y=>"'"+String(y).slice(2);
+  const span = y1===y2 ? `P${p1} W${weekOfDate(c.from)} – P${p2} W${weekOfDate(c.to)} ${yy(y1)}`
+                       : `P${p1} W${weekOfDate(c.from)} ${yy(y1)} – P${p2} W${weekOfDate(c.to)} ${yy(y2)}`;
+  const wks = Math.round((dayIdx(c.to)-dayIdx(c.from)+1)/7*2)/2;
+  c.label=`Closed ${span} (${fmtD(c.from)} – ${fmtD(c.to)}) · ~${wks} weeks · ${c.note}`;
 }
 function closuresFor(store, ...sets){
   return CLOSURES.filter(c=>c.store===store && sets.some(s=>s && [...c.keys].some(k=>s.has(k))));
